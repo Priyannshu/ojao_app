@@ -66,10 +66,14 @@ exports.verifyRazorpayPayment = onCall(
         razorpayPaymentId,
         razorpaySignature,
         appointmentId,
+        facilityId,
       } = request.data || {};
 
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
         throw new HttpsError("invalid-argument", "Missing verification fields.");
+      }
+      if (!facilityId) {
+        throw new HttpsError("invalid-argument", "A facilityId is required.");
       }
 
       // Verify the signature: HMAC_SHA256(order_id + "|" + payment_id, secret).
@@ -85,22 +89,24 @@ exports.verifyRazorpayPayment = onCall(
 
       if (!valid) {
         // Record the failed attempt for audit, then reject.
-        await admin.firestore().collection("clinics/main/payments").add({
-          userId: request.auth.uid,
-          appointmentId: appointmentId || "",
-          razorpayOrderId,
-          razorpayPaymentId,
-          status: "failed",
-          createdAt: new Date().toISOString(),
-        });
+        await admin.firestore()
+            .collection(`facilities/${facilityId}/payments`).add({
+              userId: request.auth.uid,
+              appointmentId: appointmentId || "",
+              facilityId,
+              razorpayOrderId,
+              razorpayPaymentId,
+              status: "failed",
+              createdAt: new Date().toISOString(),
+            });
         throw new HttpsError("permission-denied", "Signature verification failed.");
       }
 
       // Mark the appointment confirmed on successful payment.
-      if (appointmentId) {
+      if (appointmentId && facilityId) {
         await admin
             .firestore()
-            .doc(`clinics/main/appointments/${appointmentId}`)
+            .doc(`facilities/${facilityId}/appointments/${appointmentId}`)
             .set({status: "confirmed"}, {merge: true});
       }
 

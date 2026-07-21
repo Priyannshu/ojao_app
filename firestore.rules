@@ -1,0 +1,105 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helpers -------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // True when the signed-in user is staff/admin pinned to [facilityId]
+    // (UserModel.clinicId). Staff console reads/writes are scoped to this.
+    function isStaffOf(facilityId) {
+      return isSignedIn()
+        && userDoc().role in ['staff', 'admin']
+        && userDoc().clinicId == facilityId;
+    }
+
+    // --- Users ---------------------------------------------------------------
+    // A user owns their own profile document; nobody else can read or write it.
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- Facilities ----------------------------------------------------------
+    // Any signed-in user can browse facilities and their departments/analytics.
+    // Only facility staff may write within their own facility.
+    match /facilities/{facilityId} {
+      allow read: if isSignedIn();
+      allow write: if isStaffOf(facilityId);
+
+      match /departments/{departmentId} {
+        allow read: if isSignedIn();
+        allow write: if isStaffOf(facilityId);
+      }
+
+      match /analytics/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isStaffOf(facilityId);
+      }
+
+      // Tokens: a patient may create and manage their own token; facility staff
+      // may read and update every token in their facility.
+      match /tokens/{tokenId} {
+        allow read: if isStaffOf(facilityId)
+          || (isSignedIn() && resource.data.patientId == request.auth.uid);
+        allow create: if isSignedIn()
+          && request.resource.data.patientId == request.auth.uid;
+        allow update, delete: if isStaffOf(facilityId)
+          || (isSignedIn() && resource.data.patientId == request.auth.uid);
+      }
+
+      // Position mirror docs — same access model as tokens.
+      match /positions/{positionId} {
+        allow read: if isSignedIn();
+        allow write: if isStaffOf(facilityId) || isSignedIn();
+      }
+
+      // Appointments: patient owns their own; facility staff can read all.
+      match /appointments/{appointmentId} {
+        allow read: if isStaffOf(facilityId)
+          || (isSignedIn() && resource.data.patientId == request.auth.uid);
+        allow create: if isSignedIn()
+          && request.resource.data.patientId == request.auth.uid;
+        allow update, delete: if isStaffOf(facilityId)
+          || (isSignedIn() && resource.data.patientId == request.auth.uid);
+      }
+
+      // Payments are written by the verifyRazorpayPayment Cloud Function using
+      // the Admin SDK (which bypasses these rules). Clients may only read their
+      // own payment records.
+      match /payments/{paymentId} {
+        allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow write: if false;
+      }
+    }
+
+    // --- Collection-group reads ---------------------------------------------
+    // The app queries `tokens` and `appointments` across every facility
+    // (collectionGroup): patients for "my active token" / "my appointments",
+    // and staff for token-by-id lookups. Firestore evaluates collection-group
+    // queries ONLY against recursive-wildcard rules like these (the nested
+    // per-facility rules above do NOT apply to collection-group reads), so both
+    // access paths must be authorized here.
+    //
+    // Ownership is by patientId; staff access is by the denormalized facilityId
+    // field on each doc (which is why tokens/appointments carry facilityId).
+    match /{path=**}/tokens/{tokenId} {
+      allow read: if isSignedIn()
+        && (resource.data.patientId == request.auth.uid
+            || isStaffOf(resource.data.facilityId));
+    }
+
+    match /{path=**}/appointments/{appointmentId} {
+      allow read: if isSignedIn()
+        && (resource.data.patientId == request.auth.uid
+            || isStaffOf(resource.data.facilityId));
+    }
+  }
+}

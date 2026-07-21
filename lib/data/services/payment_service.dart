@@ -46,6 +46,7 @@ class PaymentService {
         'razorpayPaymentId': paymentId,
         'razorpaySignature': signature,
         'appointmentId': appointmentId,
+        'facilityId': facilityId,
       });
       final success = result.data?['success'] as bool? ?? false;
       final record = PaymentRecord(
