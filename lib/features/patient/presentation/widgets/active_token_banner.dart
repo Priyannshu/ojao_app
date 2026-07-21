@@ -73,8 +73,12 @@ class ActiveTokenBanner extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              token.department,
+              token.facilityName != null
+                  ? '${token.department} · ${token.facilityName}'
+                  : token.department,
               style: AppTextStyles.caption().copyWith(color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

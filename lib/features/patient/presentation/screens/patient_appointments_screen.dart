@@ -77,6 +77,23 @@ class PatientAppointmentsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(appt.department, style: AppTextStyles.caption()),
+                if (appt.facilityName != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_rounded,
+                          size: 14, color: AppColors.medicalBlue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(appt.facilityName!,
+                            style: AppTextStyles.caption().copyWith(
+                                color: AppColors.medicalBlue, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
