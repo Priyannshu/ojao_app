@@ -2,14 +2,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ojao_app/data/models/facility.dart';
 import 'package:ojao_app/data/models/user_model.dart';
 import 'package:ojao_app/features/auth/application/auth_controller.dart';
 import 'package:ojao_app/features/auth/presentation/screens/otp_verify_screen.dart';
 import 'package:ojao_app/features/auth/presentation/screens/phone_input_screen.dart';
 import 'package:ojao_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/patient_shell.dart';
+import 'package:ojao_app/features/patient/presentation/screens/facility_list_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/book_appointment_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/department_detail_screen.dart';
+import 'package:ojao_app/features/patient/presentation/screens/facility_home_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/token_tracking_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/video_consult_screen.dart';
 import 'package:ojao_app/features/staff/presentation/screens/staff_shell.dart';
@@ -27,6 +30,8 @@ class AppRoutes {
   static const patientHome = '/patient';
   static const patientAppointments = '/patient/appointments';
   static const patientProfile = '/patient/profile';
+  static const facilityList = '/patient/facilities'; // + /:type
+  static const facilityHome = '/patient/facility'; // selected facility's departments
   static const departmentDetail = '/patient/department'; // + /:deptId
   static const bookAppointment = '/patient/book'; // + /:deptId
   static const tokenTracking = '/patient/token'; // + /:tokenId
@@ -115,6 +120,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'profile',
             builder: (_, _) => const PatientShell(tab: PatientTab.profile),
+          ),
+          GoRoute(
+            path: 'facilities/:type',
+            builder: (_, s) {
+              final type = FacilityType.values.asNameMap()[
+                  s.pathParameters['type']];
+              // Unknown type in the URL falls back to hospitals rather than
+              // crashing on a bad deep link.
+              return FacilityListScreen(type: type ?? FacilityType.hospital);
+            },
+          ),
+          GoRoute(
+            path: 'facility',
+            builder: (_, _) => const FacilityHomeScreen(),
           ),
           GoRoute(
             path: 'department/:deptId',

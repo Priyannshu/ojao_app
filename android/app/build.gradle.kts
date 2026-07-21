@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.ojao.ojao_app"
-    compileSdk = flutter.compileSdkVersion
+    // geolocator_android requires SDK 36; override Flutter's default (35).
+    // Android SDKs are backward compatible, so this is safe for other plugins.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
