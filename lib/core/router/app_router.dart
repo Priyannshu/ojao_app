@@ -6,6 +6,9 @@ import 'package:ojao_app/data/models/facility.dart';
 import 'package:ojao_app/data/models/user_model.dart';
 import 'package:ojao_app/features/auth/application/auth_controller.dart';
 import 'package:ojao_app/features/auth/presentation/screens/otp_verify_screen.dart';
+import 'package:ojao_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:ojao_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:ojao_app/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:ojao_app/features/auth/presentation/screens/phone_input_screen.dart';
 import 'package:ojao_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:ojao_app/features/patient/presentation/screens/patient_shell.dart';
@@ -24,6 +27,9 @@ class AppRoutes {
   const AppRoutes._();
 
   static const splash = '/';
+  static const login = '/auth/login';
+  static const register = '/auth/register';
+  static const forgotPassword = '/auth/forgot';
   static const phone = '/auth/phone';
   static const otp = '/auth/otp';
 
@@ -63,7 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // on splash forever — send the user into the sign-in flow.
       if (authAsync.hasError && !authAsync.hasValue) {
         final loc = state.matchedLocation;
-        return loc == AppRoutes.phone ? null : AppRoutes.phone;
+        return loc == AppRoutes.login ? null : AppRoutes.login;
       }
 
       final auth = authAsync.valueOrNull;
@@ -75,11 +81,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       final signedIn = auth.step == AuthStep.complete && auth.user != null;
 
       if (!signedIn) {
-        // Not authenticated: route through the phone/OTP flow.
+        // Mid phone/SMS-OTP flow: keep the user on the OTP screen.
         if (auth.step == AuthStep.otpInput) {
           return inAuthFlow && loc == AppRoutes.otp ? null : AppRoutes.otp;
         }
-        return inAuthFlow && loc == AppRoutes.phone ? null : AppRoutes.phone;
+        // Otherwise allow any /auth screen (login, register, forgot, phone);
+        // default unauthenticated entry is the password login screen.
+        return inAuthFlow ? null : AppRoutes.login;
       }
 
       // Authenticated: send to the correct role home if sitting on
@@ -98,6 +106,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.splash,
         builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (_, _) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        builder: (_, _) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (_, _) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: AppRoutes.phone,
