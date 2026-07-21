@@ -1,0 +1,154 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ojao_app/data/models/user_model.dart';
+import 'package:ojao_app/data/services/auth_service.dart';
+import 'package:ojao_app/data/services/fcm_service.dart';
+import 'package:ojao_app/data/services/firestore_service.dart';
+
+enum AuthStep { phoneInput, otpInput, complete }
+
+class AuthState {
+  final UserRole role;
+  final AuthStep step;
+  final String? phoneNumber;
+  final String? verificationId;
+  final UserModel? user;
+  final bool isLoading;
+  final String? error;
+
+  const AuthState({
+    this.role = UserRole.patient,
+    this.step = AuthStep.phoneInput,
+    this.phoneNumber,
+    this.verificationId,
+    this.user,
+    this.isLoading = false,
+    this.error,
+  });
+
+  AuthState copyWith({
+    UserRole? role,
+    AuthStep? step,
+    String? phoneNumber,
+    String? verificationId,
+    UserModel? user,
+    bool? isLoading,
+    String? error,
+    bool clearError = false,
+    bool clearVerificationId = false,
+  }) {
+    return AuthState(
+      role: role ?? this.role,
+      step: step ?? this.step,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      verificationId: clearVerificationId ? null : (verificationId ?? this.verificationId),
+      user: user ?? this.user,
+      isLoading: isLoading ?? this.isLoading,
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
+}
+
+class AuthController extends AsyncNotifier<AuthState> {
+  late final AuthService _authService;
+  late final FirestoreService _fs;
+  late final FcmService _fcm;
+
+  @override
+  Future<AuthState> build() async {
+    _authService = AuthService();
+    _fs = FirestoreService();
+    _fcm = FcmService();
+
+    // Push-notification setup must never gate the app's startup. On some
+    // devices/emulators FirebaseMessaging.requestPermission() can hang or
+    // throw; awaiting it here previously left the app stuck on the splash
+    // screen forever. Fire it off in the background and swallow failures.
+    unawaited(_initFcmSafely());
+
+    // Reading the signed-in user's profile is the one thing that gates
+    // startup, so bound it with a timeout — a misconfigured or unreachable
+    // Firestore backend should surface as "signed out", not an infinite splash.
+    final user = _authService.currentUser;
+    if (user != null) {
+      try {
+        final snap = await _fs
+            .getDoc(FirestorePaths.user(user.uid))
+            .timeout(const Duration(seconds: 10));
+        if (snap.exists) {
+          final model = UserModel.fromJson(snap.data()!);
+          return AuthState(role: model.role, step: AuthStep.complete, user: model, phoneNumber: model.phoneNumber);
+        }
+      } catch (_) {
+        // Fall through to the signed-out state so the app reaches the login
+        // screen instead of hanging when the profile read fails or times out.
+      }
+    }
+    return const AuthState();
+  }
+
+  Future<void> _initFcmSafely() async {
+    try {
+      await _fcm.init().timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Notifications are non-essential to sign-in; ignore setup failures.
+    }
+  }
+
+  Future<void> sendOtp(String phone, {UserRole? role}) async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      await _authService.verifyPhoneNumber(
+        phoneNumber: phone,
+        verificationCompleted: (_) {},
+        verificationFailed: (e) {
+          state = AsyncData(current.copyWith(isLoading: false, error: e.message ?? 'OTP failed'));
+        },
+        codeSent: (vid, _) {
+          state = AsyncData(current.copyWith(
+            isLoading: false,
+            step: AuthStep.otpInput,
+            phoneNumber: phone,
+            verificationId: vid,
+            role: role ?? current.role,
+          ));
+        },
+        autoRetrievalTimeout: (_) {},
+      );
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> verifyOtp(String smsCode) async {
+    final current = state.value ?? const AuthState();
+    if (current.verificationId == null) return;
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      final cred = await _authService.verifyOtp(smsCode: smsCode, verificationId: current.verificationId!);
+      final firebaseUser = cred.user;
+      if (firebaseUser == null) throw Exception('User is null after OTP');
+      final snap = await _fs.getDoc(FirestorePaths.user(firebaseUser.uid));
+      if (!snap.exists) {
+        final model = UserModel(
+          uid: firebaseUser.uid,
+          phoneNumber: firebaseUser.phoneNumber ?? current.phoneNumber ?? '',
+          role: current.role,
+          createdAt: DateTime.now(),
+          isVerified: true,
+        );
+        await _fs.setDoc(FirestorePaths.user(firebaseUser.uid), model.toJson());
+        state = AsyncData(current.copyWith(isLoading: false, step: AuthStep.complete, user: model));
+      } else {
+        final model = UserModel.fromJson(snap.data()!);
+        state = AsyncData(current.copyWith(isLoading: false, step: AuthStep.complete, user: model));
+      }
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+}
+
+final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(AuthController.new);

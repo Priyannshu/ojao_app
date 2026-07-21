@@ -1,0 +1,14 @@
+{
+  "name": "ojao-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Seeds sample data into the ojao Firestore project.",
+  "scripts": {
+    "seed": "node seed_firestore.js",
+    "seed:dry": "node seed_firestore.js --dry-run",
+    "dry-run": "node seed_firestore.js --dry-run"
+  },
+  "dependencies": {
+    "firebase-admin": "12.7.0"
+  }
+}
