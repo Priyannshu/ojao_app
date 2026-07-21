@@ -81,7 +81,7 @@ class PatientHomeScreen extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.15,
+              childAspectRatio: 1.35,
               children: [
                 for (final type in types)
                   CategoryTile(

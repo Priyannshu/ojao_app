@@ -26,9 +26,13 @@ class _PhoneInputScreenState extends ConsumerState<PhoneInputScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+              child: IntrinsicHeight(
+                child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -48,13 +52,16 @@ class _PhoneInputScreenState extends ConsumerState<PhoneInputScreen> {
                   validator: (v) => (v == null || v.trim().length < 10) ? 'Enter a valid phone number' : null,
                 ),
                 const SizedBox(height: 24),
-                SegmentedButton<UserRole>(
-                  segments: const [
-                    ButtonSegment(value: UserRole.patient, label: Text('Patient'), icon: Icon(Icons.person_outline_rounded)),
-                    ButtonSegment(value: UserRole.staff, label: Text('Staff'), icon: Icon(Icons.badge_outlined)),
-                  ],
-                  selected: {_isPatient ? UserRole.patient : UserRole.staff},
-                  onSelectionChanged: (sel) => setState(() => _isPatient = sel.first == UserRole.patient),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<UserRole>(
+                    segments: const [
+                      ButtonSegment(value: UserRole.patient, label: Text('Patient'), icon: Icon(Icons.person_outline_rounded)),
+                      ButtonSegment(value: UserRole.staff, label: Text('Staff'), icon: Icon(Icons.badge_outlined)),
+                    ],
+                    selected: {_isPatient ? UserRole.patient : UserRole.staff},
+                    onSelectionChanged: (sel) => setState(() => _isPatient = sel.first == UserRole.patient),
+                  ),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 12),
@@ -75,6 +82,9 @@ class _PhoneInputScreenState extends ConsumerState<PhoneInputScreen> {
                   },
                 ),
               ],
+            ),
+                ),
+              ),
             ),
           ),
         ),

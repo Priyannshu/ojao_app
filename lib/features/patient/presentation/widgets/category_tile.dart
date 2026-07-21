@@ -27,13 +27,14 @@ class CategoryTile extends StatelessWidget {
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: AppColors.medicalBlue
                       .withValues(alpha: enabled ? 0.12 : 0.05),
@@ -47,15 +48,23 @@ class CategoryTile extends StatelessWidget {
                   size: 24,
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(type.pluralLabel,
-                  style: AppTextStyles.bodyBold().copyWith(fontSize: 15)),
-              const SizedBox(height: 2),
-              Text(
-                enabled
-                    ? '$count nearby'
-                    : 'None nearby',
-                style: AppTextStyles.caption().copyWith(fontSize: 12),
+              const SizedBox(height: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(type.pluralLabel,
+                      style: AppTextStyles.bodyBold().copyWith(fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(
+                    enabled ? '$count nearby' : 'None nearby',
+                    style: AppTextStyles.caption().copyWith(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),

@@ -71,9 +71,13 @@ class FacilityCard extends StatelessWidget {
                         style: AppTextStyles.caption().copyWith(fontSize: 12)),
                     if (facility.departmentCount > 0) ...[
                       const SizedBox(width: 10),
-                      Text('${facility.departmentCount} departments',
-                          style:
-                              AppTextStyles.caption().copyWith(fontSize: 12)),
+                      Flexible(
+                        child: Text('${facility.departmentCount} departments',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption()
+                                .copyWith(fontSize: 12)),
+                      ),
                     ],
                   ],
                 ),

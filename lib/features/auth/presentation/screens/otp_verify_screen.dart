@@ -25,9 +25,13 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+              child: IntrinsicHeight(
+                child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,6 +65,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                   },
                 ),
               ],
+            ),
+                ),
+              ),
             ),
           ),
         ),
