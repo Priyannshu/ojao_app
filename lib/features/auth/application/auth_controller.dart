@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ojao_app/data/models/user_model.dart';
 import 'package:ojao_app/data/services/auth_service.dart';
@@ -148,6 +150,148 @@ class AuthController extends AsyncNotifier<AuthState> {
     } catch (e) {
       state = AsyncData(current.copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  // --- Phone + password auth (Fast2SMS OTP) --------------------------------
+
+  /// Maps backend/Firebase errors to short, user-facing messages.
+  String _friendlyError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      return e.message ?? 'Something went wrong. Please try again.';
+    }
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'Incorrect mobile number or password.';
+        case 'user-not-found':
+          return 'No account found for this number.';
+        case 'too-many-requests':
+          return 'Too many attempts. Please try again later.';
+        default:
+          return e.message ?? 'Sign-in failed. Please try again.';
+      }
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
+  /// Requests an OTP for registration or password reset. [purpose] is
+  /// 'register' or 'reset'. Returns true when the SMS was sent.
+  Future<bool> sendPhoneOtp({
+    required String mobile,
+    required String purpose,
+  }) async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      await _authService.sendPhoneOtp(mobile: mobile, purpose: purpose);
+      state = AsyncData(current.copyWith(isLoading: false));
+      return true;
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      return false;
+    }
+  }
+
+  /// Registers a new account (verifies OTP server-side) and signs in.
+  Future<bool> registerWithOtp({
+    required String mobile,
+    required String name,
+    required String email,
+    required String password,
+    required String code,
+  }) async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      final cred = await _authService.registerWithOtp(
+        mobile: mobile,
+        name: name,
+        email: email,
+        password: password,
+        code: code,
+      );
+      await _completeSignIn(cred);
+      return true;
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      return false;
+    }
+  }
+
+  /// Signs in with mobile number + 6-digit password.
+  Future<bool> loginWithPassword({
+    required String mobile,
+    required String password,
+  }) async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      final cred = await _authService.loginWithPassword(
+        mobile: mobile,
+        password: password,
+      );
+      await _completeSignIn(cred);
+      return true;
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      return false;
+    }
+  }
+
+  /// Resets the password after OTP verification and signs in.
+  Future<bool> resetPasswordWithOtp({
+    required String mobile,
+    required String password,
+    required String code,
+  }) async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      final cred = await _authService.resetPasswordWithOtp(
+        mobile: mobile,
+        password: password,
+        code: code,
+      );
+      await _completeSignIn(cred);
+      return true;
+    } catch (e) {
+      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      return false;
+    }
+  }
+
+  /// Loads the profile for a freshly signed-in credential and moves auth to
+  /// the completed state. The profile doc is written by the Cloud Function on
+  /// register, so it should exist; we tolerate a brief miss on reset/login.
+  Future<void> _completeSignIn(UserCredential cred) async {
+    final firebaseUser = cred.user;
+    final current = state.value ?? const AuthState();
+    if (firebaseUser == null) {
+      state = AsyncData(current.copyWith(
+          isLoading: false, error: 'Sign-in failed. Please try again.'));
+      return;
+    }
+    UserModel? model;
+    try {
+      final snap = await _fs.getDoc(FirestorePaths.user(firebaseUser.uid));
+      if (snap.exists) model = UserModel.fromJson(snap.data()!);
+    } catch (_) {
+      // Ignore — fall back to a minimal model below.
+    }
+    model ??= UserModel(
+      uid: firebaseUser.uid,
+      phoneNumber: firebaseUser.phoneNumber ?? current.phoneNumber ?? '',
+      role: UserRole.patient,
+      isVerified: true,
+    );
+    state = AsyncData(current.copyWith(
+      isLoading: false,
+      step: AuthStep.complete,
+      user: model,
+      role: model.role,
+      phoneNumber: model.phoneNumber,
+    ));
   }
 }
 

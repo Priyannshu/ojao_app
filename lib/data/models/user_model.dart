@@ -6,6 +6,7 @@ class UserModel extends Equatable {
   final String uid;
   final String phoneNumber;
   final String? displayName;
+  final String? email;
   final UserRole role;
   final String? clinicId;
   final String? doctorId;
@@ -16,6 +17,7 @@ class UserModel extends Equatable {
     required this.uid,
     required this.phoneNumber,
     this.displayName,
+    this.email,
     required this.role,
     this.clinicId,
     this.doctorId,
@@ -30,6 +32,7 @@ class UserModel extends Equatable {
       uid: json['uid'] as String,
       phoneNumber: json['phoneNumber'] as String,
       displayName: json['displayName'] as String?,
+      email: json['email'] as String?,
       role: UserRole.values.byName(json['role'] as String? ?? 'patient'),
       clinicId: json['clinicId'] as String?,
       doctorId: json['doctorId'] as String?,
@@ -42,6 +45,7 @@ class UserModel extends Equatable {
         'uid': uid,
         'phoneNumber': phoneNumber,
         if (displayName != null) 'displayName': displayName,
+        if (email != null) 'email': email,
         'role': role.name,
         if (clinicId != null) 'clinicId': clinicId,
         if (doctorId != null) 'doctorId': doctorId,
@@ -50,5 +54,5 @@ class UserModel extends Equatable {
       };
 
   @override
-  List<Object?> get props => [uid, phoneNumber, displayName, role, clinicId, doctorId, isVerified, createdAt];
+  List<Object?> get props => [uid, phoneNumber, displayName, email, role, clinicId, doctorId, isVerified, createdAt];
 }
