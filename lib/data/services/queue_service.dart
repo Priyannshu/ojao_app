@@ -10,6 +10,19 @@ class QueueService {
   static const String tokensPath = FirestorePaths.tokens;
   static const String positionsPath = FirestorePaths.positions;
 
+  /// Sorts tokens by [PatientToken.createdAt] in place. Null timestamps are
+  /// treated as the epoch so they sort oldest. Set [descending] for
+  /// newest-first ordering.
+  static void _sortByCreatedAt(List<PatientToken> list,
+      {bool descending = false}) {
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    list.sort((a, b) {
+      final av = a.createdAt ?? epoch;
+      final bv = b.createdAt ?? epoch;
+      return descending ? bv.compareTo(av) : av.compareTo(bv);
+    });
+  }
+
   Future<PatientToken> issueToken({
     required String patientName,
     required String patientId,
@@ -49,31 +62,45 @@ class QueueService {
   }
 
   Stream<List<PatientToken>> watchActiveTokens() {
+    // Sort client-side to avoid a composite index (status + createdAt).
     return _fs.queryStream(tokensPath, builder: (q) {
-      return q.where('status', whereIn: ['waiting', 'called', 'serving']).orderBy('createdAt');
-    }).map((snap) => snap.docs.map((d) => PatientToken.fromJson(d.data())).toList());
+      return q.where('status', whereIn: ['waiting', 'called', 'serving']);
+    }).map((snap) {
+      final list = snap.docs.map((d) => PatientToken.fromJson(d.data())).toList();
+      _sortByCreatedAt(list);
+      return list;
+    });
   }
 
   /// Active tokens for a single department, ordered by arrival.
   Stream<List<PatientToken>> watchDepartmentTokens(String department) {
+    // Sort client-side to avoid a composite index
+    // (department + status + createdAt).
     return _fs.queryStream(tokensPath, builder: (q) {
       return q
           .where('department', isEqualTo: department)
-          .where('status', whereIn: ['waiting', 'called', 'serving'])
-          .orderBy('createdAt');
-    }).map((snap) => snap.docs.map((d) => PatientToken.fromJson(d.data())).toList());
+          .where('status', whereIn: ['waiting', 'called', 'serving']);
+    }).map((snap) {
+      final list = snap.docs.map((d) => PatientToken.fromJson(d.data())).toList();
+      _sortByCreatedAt(list);
+      return list;
+    });
   }
 
   /// The patient's most recent still-active token, or null if none.
   Stream<PatientToken?> watchPatientActiveToken(String patientId) {
+    // Sort client-side and pick the newest to avoid a composite index
+    // (patientId + status + createdAt).
     return _fs.queryStream(tokensPath, builder: (q) {
       return q
           .where('patientId', isEqualTo: patientId)
-          .where('status', whereIn: ['waiting', 'called', 'serving'])
-          .orderBy('createdAt', descending: true)
-          .limit(1);
-    }).map((snap) =>
-        snap.docs.isEmpty ? null : PatientToken.fromJson(snap.docs.first.data()));
+          .where('status', whereIn: ['waiting', 'called', 'serving']);
+    }).map((snap) {
+      if (snap.docs.isEmpty) return null;
+      final list = snap.docs.map((d) => PatientToken.fromJson(d.data())).toList();
+      _sortByCreatedAt(list, descending: true);
+      return list.first;
+    });
   }
 
   /// Marks a token as [TokenStatus.called] directly (staff "call next").

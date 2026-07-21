@@ -39,9 +39,19 @@ class AppointmentService {
   }
 
   Stream<List<Appointment>> watchPatientAppointments(String patientId) {
+    // Filter server-side by patientId only. Sorting is done client-side to
+    // avoid requiring a composite Firestore index (patientId + scheduledAt),
+    // which is easy to forget to deploy and otherwise throws
+    // `failed-precondition` at runtime. A single patient's appointment list is
+    // small, so sorting in-app is cheap.
     return _fs.queryStream(basePath, builder: (q) {
-      return q.where('patientId', isEqualTo: patientId).orderBy('scheduledAt', descending: true);
-    }).map((snap) => snap.docs.map((d) => Appointment.fromJson(d.data())).toList());
+      return q.where('patientId', isEqualTo: patientId);
+    }).map((snap) {
+      final list =
+          snap.docs.map((d) => Appointment.fromJson(d.data())).toList();
+      list.sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+      return list;
+    });
   }
 
   Future<void> cancelAppointment(String appointmentId) async {
