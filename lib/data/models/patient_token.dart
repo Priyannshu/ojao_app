@@ -20,6 +20,11 @@ class PatientToken extends Equatable {
   final int etaMinutes;
   final String patientId;
   final String? doctorId;
+  /// The facility this token belongs to. Stored on the doc so patient-side
+  /// collection-group reads can resolve the owning facility (and its path)
+  /// without knowing it in advance.
+  final String? facilityId;
+  final String? facilityName;
   final DateTime? createdAt;
   final DateTime? calledAt;
   final DateTime? servedAt;
@@ -35,6 +40,8 @@ class PatientToken extends Equatable {
     required this.etaMinutes,
     required this.patientId,
     this.doctorId,
+    this.facilityId,
+    this.facilityName,
     this.createdAt,
     this.calledAt,
     this.servedAt,
@@ -52,6 +59,8 @@ class PatientToken extends Equatable {
       etaMinutes: (json['etaMinutes'] as num?)?.toInt() ?? 0,
       patientId: json['patientId'] as String,
       doctorId: json['doctorId'] as String?,
+      facilityId: json['facilityId'] as String?,
+      facilityName: json['facilityName'] as String?,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
       calledAt: json['calledAt'] != null ? DateTime.parse(json['calledAt'] as String) : null,
       servedAt: json['servedAt'] != null ? DateTime.parse(json['servedAt'] as String) : null,
@@ -69,6 +78,8 @@ class PatientToken extends Equatable {
         'etaMinutes': etaMinutes,
         'patientId': patientId,
         if (doctorId != null) 'doctorId': doctorId,
+        if (facilityId != null) 'facilityId': facilityId,
+        if (facilityName != null) 'facilityName': facilityName,
         if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
         if (calledAt != null) 'calledAt': calledAt!.toIso8601String(),
         if (servedAt != null) 'servedAt': servedAt!.toIso8601String(),
@@ -79,6 +90,7 @@ class PatientToken extends Equatable {
   List<Object?> get props => [
         id, tokenNumber, patientName, department, status,
         queuePosition, etaMinutes, patientId, doctorId,
+        facilityId, facilityName,
         createdAt, calledAt, servedAt, completedAt,
       ];
 }

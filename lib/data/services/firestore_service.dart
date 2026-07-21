@@ -4,38 +4,68 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Centralized Firestore paths.
 ///
 /// Firestore requires **documents** to have an even number of path segments
-/// and **collections** an odd number. Everything the app owns lives under a
-/// single clinic document (`clinics/main`) so that entity collections are
-/// 3 segments (odd, valid) and entity documents are 4 segments (even, valid).
+/// and **collections** an odd number.
 ///
-/// Keep every path in this class — never hand-build a `clinic/...` string,
-/// which was the original bug (`clinic/users/{uid}` is 3 segments and is an
-/// illegal document path).
+/// The app is **multi-facility**: each hospital / clinic / diagnostic center is
+/// a document under the top-level `facilities` collection, and every entity it
+/// owns (departments, tokens, appointments, analytics) lives in a subcollection
+/// beneath that facility document. This keeps each facility's queue, token
+/// sequence, and appointments fully isolated from every other facility's.
+///
+///   facilities/{facilityId}                      (doc,   2 segments)
+///   facilities/{facilityId}/departments          (coll,  3 segments)
+///   facilities/{facilityId}/departments/{id}      (doc,   4 segments)
+///
+/// `users` stays a single top-level collection — a user is global and simply
+/// references a facility by id where relevant.
+///
+/// Keep every path in this class — never hand-build a path string. Getting the
+/// segment count wrong (e.g. a 3-segment "document" path) throws at runtime.
 class FirestorePaths {
   const FirestorePaths._();
 
-  /// The clinic root document. Single-tenant for now; becomes the clinic id
-  /// if the app goes multi-tenant later.
-  static const String clinic = 'clinics/main';
+  /// Top-level collections.
+  static const String facilities = 'facilities';
+  static const String users = 'users';
 
-  // Collections (odd segment count).
-  static const String users = '$clinic/users';
-  static const String departments = '$clinic/departments';
-  static const String tokens = '$clinic/tokens';
-  static const String positions = '$clinic/positions';
-  static const String appointments = '$clinic/appointments';
-  static const String payments = '$clinic/payments';
-  static const String analytics = '$clinic/analytics';
-
-  // Well-known single documents (even segment count).
-  static const String analyticsCurrent = '$analytics/current';
-
+  static String facility(String facilityId) => '$facilities/$facilityId';
   static String user(String uid) => '$users/$uid';
-  static String department(String id) => '$departments/$id';
-  static String token(String id) => '$tokens/$id';
-  static String position(String id) => '$positions/$id';
-  static String appointment(String id) => '$appointments/$id';
-  static String payment(String id) => '$payments/$id';
+
+  // --- Facility-scoped collections (odd segment count) ---------------------
+
+  static String departments(String facilityId) =>
+      '${facility(facilityId)}/departments';
+  static String tokens(String facilityId) => '${facility(facilityId)}/tokens';
+  static String positions(String facilityId) =>
+      '${facility(facilityId)}/positions';
+  static String appointments(String facilityId) =>
+      '${facility(facilityId)}/appointments';
+  static String payments(String facilityId) =>
+      '${facility(facilityId)}/payments';
+  static String analytics(String facilityId) =>
+      '${facility(facilityId)}/analytics';
+
+  // --- Facility-scoped documents (even segment count) ----------------------
+
+  static String department(String facilityId, String id) =>
+      '${departments(facilityId)}/$id';
+  static String token(String facilityId, String id) =>
+      '${tokens(facilityId)}/$id';
+  static String position(String facilityId, String id) =>
+      '${positions(facilityId)}/$id';
+  static String appointment(String facilityId, String id) =>
+      '${appointments(facilityId)}/$id';
+  static String payment(String facilityId, String id) =>
+      '${payments(facilityId)}/$id';
+  static String analyticsCurrent(String facilityId) =>
+      '${analytics(facilityId)}/current';
+
+  // --- Collection-group ids (for cross-facility patient queries) -----------
+
+  /// Used with `collectionGroup('tokens')` to find a patient's tokens across
+  /// every facility with a single equality filter (no composite index).
+  static const String tokensGroup = 'tokens';
+  static const String appointmentsGroup = 'appointments';
 }
 
 class FirestoreService {
@@ -58,6 +88,19 @@ class FirestoreService {
     Query<Map<String, dynamic>> Function(Query<Map<String, dynamic>>)? builder,
   }) {
     final base = _db.collection(path);
+    final q = builder != null ? builder(base) : base;
+    return q.snapshots();
+  }
+
+  /// Queries every collection with [collectionId] regardless of its parent
+  /// facility. Used for patient-centric reads that must span all facilities
+  /// (e.g. "my appointments everywhere"). Keep the [builder] to a single
+  /// equality filter and sort client-side to avoid composite indexes.
+  Stream<QuerySnapshot<Map<String, dynamic>>> collectionGroupStream(
+    String collectionId, {
+    Query<Map<String, dynamic>> Function(Query<Map<String, dynamic>>)? builder,
+  }) {
+    final base = _db.collectionGroup(collectionId);
     final q = builder != null ? builder(base) : base;
     return q.snapshots();
   }

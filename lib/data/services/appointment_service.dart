@@ -10,9 +10,12 @@ class AppointmentService {
   final FirebaseFunctions _functions;
   const AppointmentService(this._fs, this._functions);
 
-  static const String basePath = FirestorePaths.appointments;
-
+  /// Books an appointment inside a specific facility. The [facilityId] is
+  /// stored on the doc so patient-side collection-group reads can resolve the
+  /// owning facility (and thus the doc path for later updates).
   Future<Appointment> bookAppointment({
+    required String facilityId,
+    String? facilityName,
     required String patientId,
     String? patientName,
     required String doctorId,
@@ -24,6 +27,8 @@ class AppointmentService {
     final uid = const Uuid().v4();
     final appt = Appointment(
       id: uid,
+      facilityId: facilityId,
+      facilityName: facilityName,
       patientId: patientId,
       patientName: patientName,
       doctorId: doctorId,
@@ -34,17 +39,18 @@ class AppointmentService {
       notes: notes,
       createdAt: DateTime.now(),
     );
-    await _fs.setDoc('$basePath/$uid', appt.toJson());
+    await _fs.setDoc(FirestorePaths.appointment(facilityId, uid), appt.toJson());
     return appt;
   }
 
+  /// A patient's appointments across **every** facility, newest first.
+  ///
+  /// Uses a `collectionGroup('appointments')` query with a single equality
+  /// filter (patientId) and sorts client-side, so no composite index is
+  /// required — the same failure mode that previously broke this screen.
   Stream<List<Appointment>> watchPatientAppointments(String patientId) {
-    // Filter server-side by patientId only. Sorting is done client-side to
-    // avoid requiring a composite Firestore index (patientId + scheduledAt),
-    // which is easy to forget to deploy and otherwise throws
-    // `failed-precondition` at runtime. A single patient's appointment list is
-    // small, so sorting in-app is cheap.
-    return _fs.queryStream(basePath, builder: (q) {
+    return _fs.collectionGroupStream(FirestorePaths.appointmentsGroup,
+        builder: (q) {
       return q.where('patientId', isEqualTo: patientId);
     }).map((snap) {
       final list =
@@ -54,8 +60,10 @@ class AppointmentService {
     });
   }
 
-  Future<void> cancelAppointment(String appointmentId) async {
-    await _fs.updateDoc('$basePath/$appointmentId', {'status': AppointmentStatus.cancelled.name});
+  Future<void> cancelAppointment(
+      String facilityId, String appointmentId) async {
+    await _fs.updateDoc(FirestorePaths.appointment(facilityId, appointmentId),
+        {'status': AppointmentStatus.cancelled.name});
   }
 }
 

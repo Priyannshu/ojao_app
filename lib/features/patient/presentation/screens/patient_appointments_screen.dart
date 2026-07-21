@@ -106,7 +106,7 @@ class PatientAppointmentsScreen extends ConsumerWidget {
                         const SizedBox(width: 10),
                       Expanded(
                         child: TextButton(
-                          onPressed: () => _confirmCancel(context, ref, appt.id),
+                          onPressed: () => _confirmCancel(context, ref, appt),
                           style: TextButton.styleFrom(
                               foregroundColor: AppColors.danger),
                           child: const Text('Cancel'),
@@ -124,7 +124,7 @@ class PatientAppointmentsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmCancel(
-      BuildContext context, WidgetRef ref, String id) async {
+      BuildContext context, WidgetRef ref, Appointment appt) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -143,7 +143,7 @@ class PatientAppointmentsScreen extends ConsumerWidget {
       ),
     );
     if (confirmed == true) {
-      await ref.read(patientActionsProvider.notifier).cancelAppointment(id);
+      await ref.read(patientActionsProvider.notifier).cancelAppointment(appt);
     }
   }
 }

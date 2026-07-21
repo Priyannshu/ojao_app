@@ -6,10 +6,8 @@ class AnalyticsService {
   final FirestoreService _fs;
   const AnalyticsService(this._fs);
 
-  static const String statsPath = FirestorePaths.analyticsCurrent;
-
-  Future<ClinicStats> fetchLatestStats() async {
-    final snap = await _fs.getDoc(statsPath);
+  Future<ClinicStats> fetchLatestStats(String facilityId) async {
+    final snap = await _fs.getDoc(FirestorePaths.analyticsCurrent(facilityId));
     if (!snap.exists) {
       return ClinicStats(
         id: 'current',
@@ -24,8 +22,8 @@ class AnalyticsService {
     return ClinicStats.fromJson(snap.data()!);
   }
 
-  Stream<ClinicStats> watchStats() {
-    return _fs.docStream(statsPath).map((snap) {
+  Stream<ClinicStats> watchStats(String facilityId) {
+    return _fs.docStream(FirestorePaths.analyticsCurrent(facilityId)).map((snap) {
       if (!snap.exists) {
         return ClinicStats(
           id: 'current',

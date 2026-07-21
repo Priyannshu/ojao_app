@@ -9,6 +9,8 @@ class Appointment extends Equatable {
   final String doctorId;
   final String doctorName;
   final String department;
+  final String? facilityId;
+  final String? facilityName;
   final DateTime scheduledAt;
   final AppointmentStatus status;
   final String? notes;
@@ -23,6 +25,8 @@ class Appointment extends Equatable {
     required this.doctorId,
     required this.doctorName,
     required this.department,
+    this.facilityId,
+    this.facilityName,
     required this.scheduledAt,
     required this.status,
     this.notes,
@@ -39,6 +43,8 @@ class Appointment extends Equatable {
       doctorId: json['doctorId'] as String,
       doctorName: json['doctorName'] as String,
       department: json['department'] as String,
+      facilityId: json['facilityId'] as String?,
+      facilityName: json['facilityName'] as String?,
       scheduledAt: DateTime.parse(json['scheduledAt'] as String),
       status: AppointmentStatus.values.byName(json['status'] as String? ?? 'pending'),
       notes: json['notes'] as String?,
@@ -55,6 +61,8 @@ class Appointment extends Equatable {
         'doctorId': doctorId,
         'doctorName': doctorName,
         'department': department,
+        if (facilityId != null) 'facilityId': facilityId,
+        if (facilityName != null) 'facilityName': facilityName,
         'scheduledAt': scheduledAt.toIso8601String(),
         'status': status.name,
         if (notes != null) 'notes': notes,

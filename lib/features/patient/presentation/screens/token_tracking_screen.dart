@@ -161,7 +161,7 @@ class _TokenBody extends ConsumerWidget {
                 : () async {
                     await ref
                         .read(patientActionsProvider.notifier)
-                        .leaveQueue(token.id);
+                        .leaveQueue(token);
                     if (context.mounted) context.go(AppRoutes.patientHome);
                   },
             style: OutlinedButton.styleFrom(

@@ -6,21 +6,22 @@ class DepartmentService {
   final FirestoreService _fs;
   const DepartmentService(this._fs);
 
-  static const String basePath = FirestorePaths.departments;
-
-  Stream<List<Department>> watchDepartments() {
-    return _fs.queryStream(basePath, builder: (q) => q.where('isActive', isEqualTo: true))
+  /// Active departments for a single facility.
+  Stream<List<Department>> watchDepartments(String facilityId) {
+    return _fs
+        .queryStream(FirestorePaths.departments(facilityId),
+            builder: (q) => q.where('isActive', isEqualTo: true))
         .map((snap) => snap.docs.map((d) => Department.fromJson(d.data())).toList());
   }
 
-  Future<Department?> getDepartment(String id) async {
-    final snap = await _fs.getDoc('$basePath/$id');
+  Future<Department?> getDepartment(String facilityId, String id) async {
+    final snap = await _fs.getDoc(FirestorePaths.department(facilityId, id));
     if (!snap.exists) return null;
     return Department.fromJson(snap.data()!);
   }
 
-  Future<void> createDepartment(Department dept) async {
-    await _fs.setDoc('$basePath/${dept.id}', dept.toJson());
+  Future<void> createDepartment(String facilityId, Department dept) async {
+    await _fs.setDoc(FirestorePaths.department(facilityId, dept.id), dept.toJson());
   }
 }
 

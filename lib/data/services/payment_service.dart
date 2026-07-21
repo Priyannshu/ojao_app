@@ -33,6 +33,7 @@ class PaymentService {
   }
 
   Future<Result<PaymentRecord>> verifyPayment({
+    required String facilityId,
     required String orderId,
     required String paymentId,
     required String signature,
@@ -60,7 +61,8 @@ class PaymentService {
         createdAt: DateTime.now(),
         paidAt: success ? DateTime.now() : null,
       );
-      await _fs.setDoc(FirestorePaths.payment(record.id), record.toJson());
+      await _fs.setDoc(
+          FirestorePaths.payment(facilityId, record.id), record.toJson());
       return Result.success(record);
     } catch (e) {
       return Result.failure(PaymentFailure(message: e.toString()));
