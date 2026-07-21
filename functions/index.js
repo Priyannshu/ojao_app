@@ -113,3 +113,11 @@ exports.verifyRazorpayPayment = onCall(
       return {success: true};
     },
 );
+
+// --- Phone + password auth (Fast2SMS OTP) ---------------------------------
+// Defined in otp_auth.js; required AFTER admin.initializeApp() above so the
+// shared Admin app is ready. Re-exported here so Firebase discovers them.
+const otpAuth = require("./otp_auth");
+exports.sendPhoneOtp = otpAuth.sendPhoneOtp;
+exports.registerWithOtp = otpAuth.registerWithOtp;
+exports.resetPasswordWithOtp = otpAuth.resetPasswordWithOtp;

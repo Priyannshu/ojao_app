@@ -27,6 +27,13 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // --- OTP requests --------------------------------------------------------
+    // Written and read ONLY by the auth Cloud Functions (Admin SDK bypasses
+    // rules). Clients must never touch OTP hashes / attempt counters.
+    match /otp_requests/{mobile} {
+      allow read, write: if false;
+    }
+
     // --- Facilities ----------------------------------------------------------
     // Any signed-in user can browse facilities and their departments/analytics.
     // Only facility staff may write within their own facility.
