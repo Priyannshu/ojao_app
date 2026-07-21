@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location: used to find hospitals, clinics and diagnostic centers near
+         the patient and sort them by distance. Coarse is sufficient for a
+         "near me" list; fine is included for a better fix when available. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
     <application
         android:label="ojao_app"
         android:name="${applicationName}"

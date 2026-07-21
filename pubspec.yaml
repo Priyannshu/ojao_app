@@ -43,6 +43,9 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   connectivity_plus: ^6.0.5
 
+  # Location (near-me facility discovery)
+  geolocator: ^13.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
