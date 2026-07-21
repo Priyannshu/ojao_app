@@ -1,5 +1,5 @@
 /**
- * ojao — Phone + password auth via Fast2SMS OTP.
+ * ojao — Phone + password auth via WhatsApp Business Cloud API OTP.
  *
  * Firebase Auth only supports email+password sign-in, so we register each user
  * with a DETERMINISTIC synthetic email derived from their mobile number
@@ -8,8 +8,17 @@
  * directly — no server lookup needed. The user's REAL email is kept in their
  * Firestore profile for future use (receipts, notifications).
  *
- * OTPs are sent over SMS by Fast2SMS. The API key is a secret, never in source:
- *   firebase functions:secrets:set FAST2SMS_API_KEY
+ * OTPs are delivered via WhatsApp using Meta's Cloud API. Configure once via
+ * secrets (all four are required):
+ *   firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN     # permanent system-user token
+ *   firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID  # numeric id, e.g. 1235520376311429
+ *   firebase functions:secrets:set WHATSAPP_TEMPLATE_NAME    # approved authentication template name
+ *   firebase functions:secrets:set WHATSAPP_TEMPLATE_LANG    # language code, e.g. en_US
+ *
+ * The template MUST be in the "authentication" category, have exactly one body
+ * placeholder ({{1}}) and the standard Copy-Code button. Meta populates both
+ * with the code we pass. `hello_world` will NOT deliver an OTP — swap the
+ * template secret to your approved auth template's name when it's ready.
  *
  * Callable functions (client -> lib/data/services/auth_service.dart):
  *   - sendPhoneOtp({ mobile, purpose })                       -> { ok }
@@ -21,7 +30,20 @@ const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
-const FAST2SMS_API_KEY = defineSecret("FAST2SMS_API_KEY");
+const WHATSAPP_ACCESS_TOKEN = defineSecret("WHATSAPP_ACCESS_TOKEN");
+const WHATSAPP_PHONE_NUMBER_ID = defineSecret("WHATSAPP_PHONE_NUMBER_ID");
+const WHATSAPP_TEMPLATE_NAME = defineSecret("WHATSAPP_TEMPLATE_NAME");
+const WHATSAPP_TEMPLATE_LANG = defineSecret("WHATSAPP_TEMPLATE_LANG");
+
+const OTP_SECRETS = [
+  WHATSAPP_ACCESS_TOKEN,
+  WHATSAPP_PHONE_NUMBER_ID,
+  WHATSAPP_TEMPLATE_NAME,
+  WHATSAPP_TEMPLATE_LANG,
+];
+
+// Pin the Graph API version so payload shape changes don't surprise us.
+const WA_GRAPH_VERSION = "v21.0";
 
 // --- Tunables --------------------------------------------------------------
 const OTP_TTL_MS = 5 * 60 * 1000; // codes valid for 5 minutes
@@ -61,24 +83,49 @@ function isValidPassword(password) {
   return typeof password === "string" && /^\d{6}$/.test(password);
 }
 
-/** Sends an OTP SMS via Fast2SMS. Throws HttpsError on failure. */
-async function sendSms(mobile, code) {
-  // Fast2SMS expects the 10-digit number without country code for Indian DLT.
-  const numbers = mobile.length > 10 ? mobile.slice(-10) : mobile;
-  const message = `Your ojao verification code is ${code}. It is valid for 5 minutes. Do not share it with anyone.`;
+/**
+ * Sends an OTP over WhatsApp via Meta's Cloud API. Throws HttpsError on
+ * failure. Uses an authentication-category template with a single body
+ * placeholder ({{1}}) and a Copy-Code button; the same code is passed to both
+ * components so Meta's one-tap autofill works.
+ */
+async function sendWhatsappOtp(mobile, code) {
+  // WhatsApp expects the full international number in digits only, no plus.
+  // 10-digit local numbers are assumed to be Indian and get a "91" prefix so
+  // the Graph API accepts them consistently.
+  const to = mobile.length === 10 ? `91${mobile}` : mobile;
 
-  const resp = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+  const url = `https://graph.facebook.com/${WA_GRAPH_VERSION}/${WHATSAPP_PHONE_NUMBER_ID.value()}/messages`;
+  const body = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: WHATSAPP_TEMPLATE_NAME.value(),
+      language: {code: WHATSAPP_TEMPLATE_LANG.value()},
+      components: [
+        {
+          type: "body",
+          parameters: [{type: "text", text: code}],
+        },
+        {
+          // Copy-Code button — required by Meta's standard auth template.
+          type: "button",
+          sub_type: "url",
+          index: "0",
+          parameters: [{type: "text", text: code}],
+        },
+      ],
+    },
+  };
+
+  const resp = await fetch(url, {
     method: "POST",
     headers: {
-      "authorization": FAST2SMS_API_KEY.value(),
+      "Authorization": `Bearer ${WHATSAPP_ACCESS_TOKEN.value()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      route: "q", // quick transactional route; adjust to your DLT setup
-      message,
-      language: "english",
-      numbers,
-    }),
+    body: JSON.stringify(body),
   });
 
   let data;
@@ -88,8 +135,12 @@ async function sendSms(mobile, code) {
     data = null;
   }
 
-  if (!resp.ok || !data || data.return !== true) {
-    console.error("Fast2SMS send failed", {status: resp.status, data});
+  if (!resp.ok || !data || data.error) {
+    console.error("WhatsApp send failed", {
+      status: resp.status,
+      error: data && data.error,
+    });
+    // Surface a user-facing message. The Meta error stays in the log for us.
     throw new HttpsError("unavailable", "Could not send the OTP. Try again.");
   }
 }
@@ -175,7 +226,7 @@ async function consumeOtp(db, digits, code) {
 // --- Callable functions ----------------------------------------------------
 
 const sendPhoneOtp = onCall(
-    {secrets: [FAST2SMS_API_KEY]},
+    {secrets: OTP_SECRETS},
     async (request) => {
       const {mobile, purpose} = request.data || {};
       const digits = normalizeMobile(mobile);
@@ -203,13 +254,13 @@ const sendPhoneOtp = onCall(
       }
 
       const code = await issueOtp(db, digits, purpose);
-      await sendSms(digits, code);
+      await sendWhatsappOtp(digits, code);
       return {ok: true};
     },
 );
 
 const registerWithOtp = onCall(
-    {secrets: [FAST2SMS_API_KEY]},
+    {secrets: OTP_SECRETS},
     async (request) => {
       const {mobile, name, email, password, code} = request.data || {};
       const digits = normalizeMobile(mobile);
@@ -260,7 +311,7 @@ const registerWithOtp = onCall(
 );
 
 const resetPasswordWithOtp = onCall(
-    {secrets: [FAST2SMS_API_KEY]},
+    {secrets: OTP_SECRETS},
     async (request) => {
       const {mobile, password, code} = request.data || {};
       const digits = normalizeMobile(mobile);
