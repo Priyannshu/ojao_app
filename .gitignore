@@ -48,3 +48,14 @@ app.*.map.json
 android/build/
 android/app/build/
 android/.gradle/
+
+# Secrets — never commit
+*-firebase-adminsdk-*.json
+*serviceAccount*.json
+.env
+.env.*
+!.env.example
+
+# Local business/marketing docs (kept out of the public repo)
+/ojao_udyam.pdf
+/presentations/
