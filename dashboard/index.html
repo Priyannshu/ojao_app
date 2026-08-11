@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ojao Hospital Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="auth-view" class="auth-layout">
+    <section class="auth-intro">
+      <div class="brand brand-large">ojao <span>care network</span></div>
+      <h1>Bring your hospital onto the ojao network.</h1>
+      <p>Submit your facility details, track verification, and prepare your team for digital queues and appointments.</p>
+      <div class="process-list" aria-label="Onboarding process">
+        <div><b>01</b><span><strong>Apply</strong>Facility and contact details</span></div>
+        <div><b>02</b><span><strong>Verification</strong>Reviewed by the ojao platform team</span></div>
+        <div><b>03</b><span><strong>Activation</strong>Hospital administrator access</span></div>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="audience-switch" role="tablist" aria-label="Portal type">
+        <button class="audience active" data-audience="partner" type="button">Hospital partner</button>
+        <button class="audience" data-audience="admin" type="button">Platform admin</button>
+      </div>
+
+      <div id="partner-auth">
+        <div class="auth-heading">
+          <p class="eyebrow">Hospital onboarding</p>
+          <h2 id="partner-auth-title">Sign in to your application</h2>
+          <p class="muted" id="partner-auth-copy">Continue an application or review its current status.</p>
+        </div>
+        <div class="form-switch">
+          <button class="form-mode active" data-mode="login" type="button">Sign in</button>
+          <button class="form-mode" data-mode="register" type="button">Create account</button>
+        </div>
+        <form id="partner-login-form" class="auth-form">
+          <label>Phone number
+            <input id="partner-phone" type="tel" autocomplete="username" placeholder="9876543210" required />
+          </label>
+          <label>Password
+            <input id="partner-password" type="password" autocomplete="current-password" minlength="6" required />
+          </label>
+          <button id="partner-login-btn" type="submit" class="btn primary full">Sign in</button>
+          <button id="forgot-password-link" type="button" class="text-action">Forgot password?</button>
+        </form>
+        <form id="partner-register-form" class="auth-form" hidden>
+          <label>Full name
+            <input id="register-name" type="text" autocomplete="name" minlength="2" maxlength="120" required />
+          </label>
+          <label>WhatsApp phone number
+            <input id="register-phone" type="tel" autocomplete="tel" placeholder="9876543210" required />
+          </label>
+          <label>Email address <span class="optional">Optional</span>
+            <input id="register-email" type="email" autocomplete="email" />
+          </label>
+          <label>Password
+            <input id="register-password" type="password" autocomplete="new-password" minlength="6" required />
+            <small>Use at least 6 characters.</small>
+          </label>
+          <div id="register-code-section" hidden>
+            <label>WhatsApp verification code
+              <input id="register-otp" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" />
+            </label>
+            <p id="register-code-message" class="success-message">A 6-digit code was sent to your WhatsApp number.</p>
+          </div>
+          <button id="partner-register-btn" type="submit" class="btn primary full">Send WhatsApp code</button>
+          <button id="register-resend" type="button" class="text-action" hidden>Resend code</button>
+        </form>
+        <form id="partner-reset-form" class="auth-form" hidden>
+          <button id="reset-back" type="button" class="text-action text-left">← Back to sign in</button>
+          <label>Registered WhatsApp number
+            <input id="reset-phone" type="tel" autocomplete="tel" placeholder="9876543210" required />
+          </label>
+          <div id="reset-code-section" hidden>
+            <label>WhatsApp verification code
+              <input id="reset-otp" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" />
+            </label>
+            <label>New password
+              <input id="reset-password" type="password" autocomplete="new-password" minlength="6" />
+              <small>Use at least 6 characters.</small>
+            </label>
+            <label>Confirm new password
+              <input id="reset-password-confirm" type="password" autocomplete="new-password" minlength="6" />
+            </label>
+            <p id="reset-code-message" class="success-message">If this number is registered, a code was sent on WhatsApp.</p>
+          </div>
+          <button id="partner-reset-btn" type="submit" class="btn primary full">Send reset code</button>
+          <button id="reset-resend" type="button" class="text-action" hidden>Resend code</button>
+        </form>
+        <p id="partner-auth-error" class="error form-error" role="alert"></p>
+      </div>
+
+      <div id="admin-auth" hidden>
+        <div class="auth-heading">
+          <p class="eyebrow">Restricted access</p>
+          <h2>Platform administration</h2>
+          <p class="muted">Review applications and manage verified hospitals.</p>
+        </div>
+        <form id="admin-login-form" class="auth-form">
+          <label>Phone number
+            <input id="admin-phone" type="tel" autocomplete="username" placeholder="9000000001" required />
+          </label>
+          <label>Password
+            <input id="admin-password" type="password" autocomplete="current-password" required />
+          </label>
+          <button id="admin-login-btn" type="submit" class="btn primary full">Sign in as admin</button>
+        </form>
+        <p id="admin-auth-error" class="error form-error" role="alert"></p>
+      </div>
+    </section>
+  </main>
+
+  <div id="portal-view" hidden>
+    <header class="topbar">
+      <div class="brand">ojao <span id="portal-label">partner</span></div>
+      <nav id="admin-tabs" class="tabs" hidden>
+        <button class="tab active" data-tab="applications">Applications</button>
+        <button class="tab" data-tab="audit">Audit log</button>
+      </nav>
+      <div class="spacer"></div>
+      <span id="whoami" class="user-label"></span>
+      <button id="logout" class="btn ghost">Sign out</button>
+    </header>
+
+    <main id="partner-workspace" class="workspace" hidden>
+      <section class="workspace-heading">
+        <div>
+          <p class="eyebrow">Hospital partner portal</p>
+          <h1 id="partner-page-title">Hospital onboarding</h1>
+          <p id="partner-page-copy" class="muted">Provide the details our verification team needs to review your facility.</p>
+        </div>
+        <button id="refresh-status" class="btn" type="button">Refresh status</button>
+      </section>
+
+      <section id="application-form-panel" class="portal-grid">
+        <form id="application-form" class="card application-form">
+          <div class="section-heading">
+            <span class="step">1</span>
+            <div><h2>Facility details</h2><p>Use the legal or registered information for your hospital.</p></div>
+          </div>
+          <label>Hospital name
+            <input id="hospital-name" type="text" minlength="2" maxlength="200" required />
+          </label>
+          <label>Registered address
+            <textarea id="hospital-address" maxlength="500" rows="3" required></textarea>
+          </label>
+          <label>Hospital contact number
+            <input id="hospital-phone" type="tel" placeholder="+91 98765 43210" required />
+          </label>
+
+          <div class="section-heading divided">
+            <span class="step">2</span>
+            <div><h2>Map location</h2><p>Coordinates help patients discover the correct facility.</p></div>
+          </div>
+          <div class="form-grid coordinates">
+            <label>Latitude
+              <input id="hospital-latitude" type="number" min="-90" max="90" step="any" />
+            </label>
+            <label>Longitude
+              <input id="hospital-longitude" type="number" min="-180" max="180" step="any" />
+            </label>
+            <button id="use-location" class="btn location-btn" type="button">Use current location</button>
+          </div>
+          <p id="location-message" class="field-message muted"></p>
+
+          <div class="section-heading divided">
+            <span class="step">3</span>
+            <div><h2>Document references</h2><p>Add keys for files already stored in your private document bucket.</p></div>
+          </div>
+          <div id="document-fields" class="document-fields">
+            <div class="document-row">
+              <label>Document label
+                <input class="document-label" type="text" maxlength="200" placeholder="Registration certificate" />
+              </label>
+              <label>Private storage key
+                <input class="document-key" type="text" maxlength="500" placeholder="applications/licence.pdf" />
+              </label>
+            </div>
+          </div>
+          <button id="add-document" class="btn ghost inline-action" type="button">+ Add another reference</button>
+
+          <div class="consent">
+            <input id="application-confirm" type="checkbox" required />
+            <label for="application-confirm">I confirm that these details are accurate and that I am authorized to represent this hospital.</label>
+          </div>
+          <p id="application-error" class="error form-error" role="alert"></p>
+          <button id="submit-application" class="btn primary full" type="submit">Submit for verification</button>
+        </form>
+
+        <aside class="application-aside">
+          <div class="aside-block">
+            <p class="eyebrow">Before submitting</p>
+            <h3>What the review team checks</h3>
+            <ul class="check-list">
+              <li>Facility identity and address</li>
+              <li>Applicant authority</li>
+              <li>Registration documentation</li>
+              <li>Map coordinates and service area</li>
+            </ul>
+          </div>
+          <div class="aside-note"><strong>Private documents</strong><span>This release records secure storage references. Raw file upload will be enabled when signed uploads are available.</span></div>
+        </aside>
+      </section>
+
+      <section id="application-status-panel" class="status-layout" hidden>
+        <div id="status-summary" class="card status-summary"></div>
+        <div id="status-details" class="card status-details"></div>
+      </section>
+    </main>
+
+    <section id="tab-applications" class="tab-panel" hidden>
+      <div class="toolbar">
+        <label>Status
+          <select id="status-filter">
+            <option value="PENDING" selected>Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="">All</option>
+          </select>
+        </label>
+        <button id="refresh-apps" class="btn">Refresh</button>
+      </div>
+      <div id="apps-list" class="list"></div>
+      <p id="apps-empty" class="muted empty" hidden>No applications for this filter.</p>
+    </section>
+
+    <section id="tab-audit" class="tab-panel" hidden>
+      <div class="toolbar">
+        <label>Entity type
+          <input id="audit-entity" type="text" placeholder="hospital_application" />
+        </label>
+        <button id="refresh-audit" class="btn">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table class="audit-table">
+          <thead><tr><th>Time</th><th>Action</th><th>Entity</th><th>Actor</th><th>Metadata</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+      <p id="audit-empty" class="muted empty" hidden>No audit entries.</p>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js?v=7"></script>
+</body>
+</html>
