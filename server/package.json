@@ -1,7 +1,7 @@
 {
   "name": "ojao-auth-server",
   "version": "1.0.0",
-  "description": "ojao phone+password OTP auth service (WhatsApp Cloud API), self-hosted on EC2. Talks to Firebase Auth + Firestore via the Admin SDK.",
+  "description": "ojao phone+password OTP auth service (Fast2SMS WhatsApp API), self-hosted on EC2. Talks to Firebase Auth + Firestore via the Admin SDK.",
   "main": "server.js",
   "engines": {
     "node": ">=18"
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "firebase-admin": "^12.6.0"
   },

@@ -9,20 +9,19 @@
  * client computes the same synthetic email at login and calls Firebase Auth
  * directly — this server never handles sessions.
  *
- * OTPs are delivered via WhatsApp Cloud API. Config comes from env vars:
- *   WHATSAPP_ACCESS_TOKEN     permanent system-user token
- *   WHATSAPP_PHONE_NUMBER_ID  numeric id, e.g. 1235520376311429
- *   WHATSAPP_TEMPLATE_NAME    approved authentication template name
- *   WHATSAPP_TEMPLATE_LANG    language code, e.g. en_US
+ * OTPs are delivered via Fast2SMS's WhatsApp API. Config comes from env vars:
+ *   FAST2SMS_API_KEY          API authorization key from the Dev API dashboard
+ *   FAST2SMS_PHONE_NUMBER_ID  WhatsApp sender phone-number ID
+ *   FAST2SMS_TEMPLATE_NAME    approved utility template name
+ *   FAST2SMS_TEMPLATE_LANG    language code, e.g. en_US
  *
- * The template MUST be authentication-category with one body placeholder
- * ({{1}}) and the standard Copy-Code button. `hello_world` will NOT deliver a
- * code — swap WHATSAPP_TEMPLATE_NAME to your approved template when ready.
+ * The approved utility template must have one body placeholder ({{1}}), where
+ * this service inserts the generated six-digit OTP.
  */
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 
-const WA_GRAPH_VERSION = "v21.0";
+const FAST2SMS_WHATSAPP_VERSION = "v24.0";
 
 // --- Tunables --------------------------------------------------------------
 const OTP_TTL_MS = 5 * 60 * 1000; // codes valid for 5 minutes
@@ -83,20 +82,21 @@ function requireEnv(name) {
   return v;
 }
 
-/** Sends an OTP over WhatsApp Cloud API. Throws AuthError on failure. */
+/** Sends an OTP through Fast2SMS's WhatsApp API. Throws AuthError on failure. */
 async function sendWhatsappOtp(mobile, code) {
-  const phoneNumberId = requireEnv("WHATSAPP_PHONE_NUMBER_ID");
-  const token = requireEnv("WHATSAPP_ACCESS_TOKEN");
-  const templateName = requireEnv("WHATSAPP_TEMPLATE_NAME");
-  const templateLang = requireEnv("WHATSAPP_TEMPLATE_LANG");
+  const phoneNumberId = requireEnv("FAST2SMS_PHONE_NUMBER_ID");
+  const apiKey = requireEnv("FAST2SMS_API_KEY");
+  const templateName = requireEnv("FAST2SMS_TEMPLATE_NAME");
+  const templateLang = requireEnv("FAST2SMS_TEMPLATE_LANG");
 
   // WhatsApp wants the full international number, digits only. 10-digit local
   // numbers are assumed Indian and get a "91" prefix.
   const to = mobile.length === 10 ? `91${mobile}` : mobile;
 
-  const url = `https://graph.facebook.com/${WA_GRAPH_VERSION}/${phoneNumberId}/messages`;
+  const url = `https://www.fast2sms.com/dev/whatsapp/${FAST2SMS_WHATSAPP_VERSION}/${phoneNumberId}/messages`;
   const body = {
     messaging_product: "whatsapp",
+    recipient_type: "individual",
     to,
     type: "template",
     template: {
@@ -104,25 +104,27 @@ async function sendWhatsappOtp(mobile, code) {
       language: {code: templateLang},
       components: [
         {type: "body", parameters: [{type: "text", text: code}]},
-        {
-          // Copy-Code button — required by Meta's standard auth template.
-          type: "button",
-          sub_type: "url",
-          index: "0",
-          parameters: [{type: "text", text: code}],
-        },
       ],
     },
   };
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    console.error("Fast2SMS WhatsApp request failed", {
+      error: err && err.message,
+    });
+    throw errUnavailable("Could not send the OTP. Try again.");
+  }
 
   let data;
   try {
@@ -131,10 +133,10 @@ async function sendWhatsappOtp(mobile, code) {
     data = null;
   }
 
-  if (!resp.ok || !data || data.error) {
-    console.error("WhatsApp send failed", {
+  if (!resp.ok || !data || data.error || data.return === false) {
+    console.error("Fast2SMS WhatsApp send failed", {
       status: resp.status,
-      error: data && data.error,
+      error: data && (data.error || data.message),
     });
     throw errUnavailable("Could not send the OTP. Try again.");
   }

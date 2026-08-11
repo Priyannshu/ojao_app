@@ -16,6 +16,11 @@
  * (Project settings -> Service accounts -> Generate new private key). Keep that
  * file OFF version control.
  */
+// Load .env into process.env before anything reads it. pm2 does NOT do this
+// automatically; without it, firebase-admin can't find the service-account
+// path and throws "Unable to detect a Project Id" on the first Firestore call.
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
