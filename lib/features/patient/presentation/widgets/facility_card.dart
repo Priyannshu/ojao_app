@@ -25,11 +25,16 @@ class FacilityCard extends StatelessWidget {
   final String? distanceLabel;
   final VoidCallback onTap;
 
+  /// Optional "Get Directions" handler. When provided, a directions button is
+  /// shown that opens external Google Maps (ARCHITECTURE.md §Google Maps).
+  final VoidCallback? onDirections;
+
   const FacilityCard({
     super.key,
     required this.facility,
     required this.onTap,
     this.distanceLabel,
+    this.onDirections,
   });
 
   @override
@@ -85,10 +90,11 @@ class FacilityCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          if (distanceLabel != null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (distanceLabel != null) ...[
                 const Icon(Icons.near_me_rounded,
                     size: 16, color: AppColors.medicalBlue),
                 const SizedBox(height: 4),
@@ -97,11 +103,22 @@ class FacilityCard extends StatelessWidget {
                       color: AppColors.medicalBlue,
                       fontSize: 13,
                     )),
-              ],
-            )
-          else
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.slateGray),
+              ] else if (onDirections == null)
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.slateGray),
+              if (onDirections != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: IconButton(
+                    onPressed: onDirections,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Get directions',
+                    icon: const Icon(Icons.directions_rounded,
+                        size: 20, color: AppColors.medicalBlue),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );

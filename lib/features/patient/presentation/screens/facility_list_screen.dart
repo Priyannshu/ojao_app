@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ojao_app/core/router/app_router.dart';
 import 'package:ojao_app/core/theme/app_text_styles.dart';
+import 'package:ojao_app/core/utils/maps_launcher.dart';
 import 'package:ojao_app/data/models/facility.dart';
 import 'package:ojao_app/features/patient/application/facility_browse_providers.dart';
 import 'package:ojao_app/features/patient/application/location_controller.dart';
@@ -63,6 +64,7 @@ class FacilityListScreen extends ConsumerWidget {
                     facility: item.facility,
                     distanceLabel: item.distanceLabel,
                     onTap: () => _selectFacility(context, ref, item.facility),
+                    onDirections: () => _openDirections(context, item.facility),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -79,6 +81,21 @@ class FacilityListScreen extends ConsumerWidget {
     // then open its department list.
     ref.read(selectedFacilityIdProvider.notifier).state = facility.id;
     context.go('${AppRoutes.patientHome}/facility');
+  }
+
+  /// Hands off to external Google Maps for turn-by-turn directions. Only reached
+  /// after the user taps the directions button (no directions call happens
+  /// during search — ARCHITECTURE.md §Google Maps).
+  Future<void> _openDirections(BuildContext context, Facility facility) async {
+    final ok = await MapsLauncher.openDirections(
+      facility.latitude,
+      facility.longitude,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Maps.')),
+      );
+    }
   }
 }
 

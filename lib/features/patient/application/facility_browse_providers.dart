@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ojao_app/core/constants/app_constants.dart';
 import 'package:ojao_app/core/utils/geo_utils.dart';
 import 'package:ojao_app/data/models/facility.dart';
 import 'package:ojao_app/features/patient/application/location_controller.dart';
@@ -19,10 +20,23 @@ class FacilityWithDistance {
 
 /// All active facilities decorated with distance and sorted nearest-first.
 ///
-/// When no position is available the list falls back to alphabetical order so
-/// the screen is still useful (and deterministic) without location access.
+/// When [AppConstants.useHospitalApi] is on, both the list AND the distance come
+/// from the backend (PostGIS `ST_Distance`), so no client-side sorting happens —
+/// the server already returned results nearest-first. Otherwise the Firestore
+/// list is decorated and sorted locally with [GeoUtils].
+///
+/// When no position is available the local path falls back to alphabetical order
+/// so the screen is still useful (and deterministic) without location access.
 final facilitiesWithDistanceProvider =
     Provider<List<FacilityWithDistance>>((ref) {
+  if (AppConstants.useHospitalApi) {
+    final hospitals = ref.watch(nearbyHospitalsProvider).valueOrNull ?? const [];
+    // Already ordered by server distance; preserve that order.
+    return hospitals
+        .map((h) => FacilityWithDistance(h.toFacility(), h.distanceKm))
+        .toList();
+  }
+
   final facilities = ref.watch(facilitiesProvider).valueOrNull ?? const [];
   final position = ref.watch(currentPositionProvider);
 

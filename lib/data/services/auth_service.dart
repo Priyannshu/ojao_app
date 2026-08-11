@@ -1,43 +1,35 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:ojao_app/core/constants/app_constants.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  /// Domain for the synthetic email we register phone users under. MUST match
-  /// `SYNTHETIC_EMAIL_DOMAIN` in functions/otp_auth.js.
   static const String _syntheticEmailDomain = 'phone.ojao.app';
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
+  }
 
-  /// Strips a mobile number to bare digits, matching the server's
-  /// normalizeMobile() so the synthetic email is identical on both sides.
   static String normalizeMobile(String mobile) =>
       mobile.replaceAll(RegExp(r'\D'), '');
 
-  /// The deterministic email Firebase Auth stores for a mobile number.
   static String syntheticEmail(String mobile) =>
       '${normalizeMobile(mobile)}@$_syntheticEmailDomain';
 
-  // --- Phone + password auth (Fast2SMS OTP via Cloud Functions) ------------
+  // --- Phone + password auth (EC2 OTP service) ------------------------------
 
-  /// Requests an OTP SMS for [mobile]. [purpose] is 'register' or 'reset';
-  /// the server validates that an account does/doesn't already exist.
   Future<void> sendPhoneOtp({
     required String mobile,
     required String purpose,
-  }) async {
-    await _functions.httpsCallable('sendPhoneOtp').call(<String, dynamic>{
-      'mobile': mobile,
-      'purpose': purpose,
-    });
-  }
+  }) => _post('/auth/send-otp', {'mobile': mobile, 'purpose': purpose});
 
-  /// Verifies the OTP and creates the account server-side, then signs the user
-  /// in with the synthetic email + password.
   Future<UserCredential> registerWithOtp({
     required String mobile,
     required String name,
@@ -45,7 +37,7 @@ class AuthService {
     required String password,
     required String code,
   }) async {
-    await _functions.httpsCallable('registerWithOtp').call(<String, dynamic>{
+    await _post('/auth/register', {
       'mobile': mobile,
       'name': name,
       'email': email,
@@ -58,26 +50,12 @@ class AuthService {
     );
   }
 
-  /// Signs in an existing phone user with their mobile number + 6-digit
-  /// password (via the synthetic email under the hood).
-  Future<UserCredential> loginWithPassword({
-    required String mobile,
-    required String password,
-  }) {
-    return _auth.signInWithEmailAndPassword(
-      email: syntheticEmail(mobile),
-      password: password,
-    );
-  }
-
-  /// Verifies the OTP and resets the account's password server-side, then
-  /// signs the user in with the new password.
   Future<UserCredential> resetPasswordWithOtp({
     required String mobile,
     required String password,
     required String code,
   }) async {
-    await _functions.httpsCallable('resetPasswordWithOtp').call(<String, dynamic>{
+    await _post('/auth/reset-password', {
       'mobile': mobile,
       'password': password,
       'code': code,
@@ -88,27 +66,66 @@ class AuthService {
     );
   }
 
+  Future<UserCredential> loginWithPassword({
+    required String mobile,
+    required String password,
+  }) => _auth.signInWithEmailAndPassword(
+    email: syntheticEmail(mobile),
+    password: password,
+  );
+
+  Future<UserCredential?> signInWithGoogle() async {
+    final account = await _googleSignIn.signIn();
+    if (account == null) return null;
+
+    final authentication = await account.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: authentication.accessToken,
+      idToken: authentication.idToken,
+    );
+    return _auth.signInWithCredential(credential);
+  }
+
+  Future<void> _post(String path, Map<String, dynamic> body) async {
+    final res = await http
+        .post(
+          Uri.parse('${AppConstants.apiBaseUrl}$path'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(AppConstants.defaultNetworkTimeout);
+    if (res.statusCode != 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(
+        data['message'] ?? 'Something went wrong. Please try again.',
+      );
+    }
+  }
+
   // --- Legacy phone (SMS) sign-in — kept available -------------------------
 
   Future<void> verifyPhoneNumber({
     required String phoneNumber,
     required PhoneVerificationCompleted verificationCompleted,
     required PhoneVerificationFailed verificationFailed,
-    required void Function(String verificationId, int? forceResendingToken) codeSent,
+    required void Function(String verificationId, int? forceResendingToken)
+    codeSent,
     required void Function(String verificationId) autoRetrievalTimeout,
-  }) {
-    return _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: verificationCompleted,
-      verificationFailed: verificationFailed,
-      codeSent: codeSent,
-      codeAutoRetrievalTimeout: autoRetrievalTimeout,
-    );
-  }
+  }) => _auth.verifyPhoneNumber(
+    phoneNumber: phoneNumber,
+    verificationCompleted: verificationCompleted,
+    verificationFailed: verificationFailed,
+    codeSent: codeSent,
+    codeAutoRetrievalTimeout: autoRetrievalTimeout,
+  );
 
-  Future<UserCredential> verifyOtp({required String smsCode, required String verificationId}) {
-    return _auth.signInWithCredential(
-      PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode),
-    );
-  }
+  Future<UserCredential> verifyOtp({
+    required String smsCode,
+    required String verificationId,
+  }) => _auth.signInWithCredential(
+    PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    ),
+  );
 }

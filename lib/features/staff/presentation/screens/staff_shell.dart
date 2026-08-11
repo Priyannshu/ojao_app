@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ojao_app/core/router/app_router.dart';
-import 'package:ojao_app/data/services/auth_service.dart';
 import 'package:ojao_app/features/auth/application/auth_controller.dart';
 import 'package:ojao_app/features/staff/presentation/screens/staff_analytics_screen.dart';
 import 'package:ojao_app/features/staff/presentation/screens/staff_dashboard_screen.dart';
@@ -39,8 +38,7 @@ class StaffShell extends ConsumerWidget {
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
-              await AuthService().signOut();
-              ref.invalidate(authControllerProvider);
+              await ref.read(authControllerProvider.notifier).signOut();
             },
           ),
         ],

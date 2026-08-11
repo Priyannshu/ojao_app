@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ojao_app/core/theme/app_colors.dart';
 import 'package:ojao_app/core/theme/app_text_styles.dart';
-import 'package:ojao_app/data/services/auth_service.dart';
 import 'package:ojao_app/features/auth/application/auth_controller.dart';
 import 'package:ojao_app/features/auth/application/current_user_provider.dart';
 import 'package:ojao_app/shared/widgets/info_card.dart';
@@ -73,8 +72,6 @@ class PatientProfileScreen extends ConsumerWidget {
   }
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
-    await AuthService().signOut();
-    // Reset auth state so the router redirects back to the phone screen.
-    ref.invalidate(authControllerProvider);
+    await ref.read(authControllerProvider.notifier).signOut();
   }
 }

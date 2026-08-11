@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ojao_app/data/models/user_model.dart';
@@ -44,7 +43,9 @@ class AuthState {
       role: role ?? this.role,
       step: step ?? this.step,
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      verificationId: clearVerificationId ? null : (verificationId ?? this.verificationId),
+      verificationId: clearVerificationId
+          ? null
+          : (verificationId ?? this.verificationId),
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -80,7 +81,12 @@ class AuthController extends AsyncNotifier<AuthState> {
             .timeout(const Duration(seconds: 10));
         if (snap.exists) {
           final model = UserModel.fromJson(snap.data()!);
-          return AuthState(role: model.role, step: AuthStep.complete, user: model, phoneNumber: model.phoneNumber);
+          return AuthState(
+            role: model.role,
+            step: AuthStep.complete,
+            user: model,
+            phoneNumber: model.phoneNumber,
+          );
         }
       } catch (_) {
         // Fall through to the signed-out state so the app reaches the login
@@ -106,21 +112,30 @@ class AuthController extends AsyncNotifier<AuthState> {
         phoneNumber: phone,
         verificationCompleted: (_) {},
         verificationFailed: (e) {
-          state = AsyncData(current.copyWith(isLoading: false, error: e.message ?? 'OTP failed'));
+          state = AsyncData(
+            current.copyWith(
+              isLoading: false,
+              error: e.message ?? 'OTP failed',
+            ),
+          );
         },
         codeSent: (vid, _) {
-          state = AsyncData(current.copyWith(
-            isLoading: false,
-            step: AuthStep.otpInput,
-            phoneNumber: phone,
-            verificationId: vid,
-            role: role ?? current.role,
-          ));
+          state = AsyncData(
+            current.copyWith(
+              isLoading: false,
+              step: AuthStep.otpInput,
+              phoneNumber: phone,
+              verificationId: vid,
+              role: role ?? current.role,
+            ),
+          );
         },
         autoRetrievalTimeout: (_) {},
       );
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: e.toString()));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: e.toString()),
+      );
     }
   }
 
@@ -129,7 +144,10 @@ class AuthController extends AsyncNotifier<AuthState> {
     if (current.verificationId == null) return;
     state = AsyncData(current.copyWith(isLoading: true, clearError: true));
     try {
-      final cred = await _authService.verifyOtp(smsCode: smsCode, verificationId: current.verificationId!);
+      final cred = await _authService.verifyOtp(
+        smsCode: smsCode,
+        verificationId: current.verificationId!,
+      );
       final firebaseUser = cred.user;
       if (firebaseUser == null) throw Exception('User is null after OTP');
       final snap = await _fs.getDoc(FirestorePaths.user(firebaseUser.uid));
@@ -142,13 +160,27 @@ class AuthController extends AsyncNotifier<AuthState> {
           isVerified: true,
         );
         await _fs.setDoc(FirestorePaths.user(firebaseUser.uid), model.toJson());
-        state = AsyncData(current.copyWith(isLoading: false, step: AuthStep.complete, user: model));
+        state = AsyncData(
+          current.copyWith(
+            isLoading: false,
+            step: AuthStep.complete,
+            user: model,
+          ),
+        );
       } else {
         final model = UserModel.fromJson(snap.data()!);
-        state = AsyncData(current.copyWith(isLoading: false, step: AuthStep.complete, user: model));
+        state = AsyncData(
+          current.copyWith(
+            isLoading: false,
+            step: AuthStep.complete,
+            user: model,
+          ),
+        );
       }
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: e.toString()));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: e.toString()),
+      );
     }
   }
 
@@ -156,9 +188,6 @@ class AuthController extends AsyncNotifier<AuthState> {
 
   /// Maps backend/Firebase errors to short, user-facing messages.
   String _friendlyError(Object e) {
-    if (e is FirebaseFunctionsException) {
-      return e.message ?? 'Something went wrong. Please try again.';
-    }
     if (e is FirebaseAuthException) {
       switch (e.code) {
         case 'wrong-password':
@@ -172,7 +201,10 @@ class AuthController extends AsyncNotifier<AuthState> {
           return e.message ?? 'Sign-in failed. Please try again.';
       }
     }
-    return 'Something went wrong. Please try again.';
+    // Errors thrown by AuthService._post carry the server's user-facing
+    // message (e.g. "That number is already registered."). Surface it.
+    final msg = e.toString().replaceFirst('Exception: ', '');
+    return msg.isEmpty ? 'Something went wrong. Please try again.' : msg;
   }
 
   /// Requests an OTP for registration or password reset. [purpose] is
@@ -188,7 +220,9 @@ class AuthController extends AsyncNotifier<AuthState> {
       state = AsyncData(current.copyWith(isLoading: false));
       return true;
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: _friendlyError(e)),
+      );
       return false;
     }
   }
@@ -214,7 +248,9 @@ class AuthController extends AsyncNotifier<AuthState> {
       await _completeSignIn(cred);
       return true;
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: _friendlyError(e)),
+      );
       return false;
     }
   }
@@ -234,7 +270,83 @@ class AuthController extends AsyncNotifier<AuthState> {
       await _completeSignIn(cred);
       return true;
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: _friendlyError(e)),
+      );
+      return false;
+    }
+  }
+
+  /// Signs in with Google and creates a patient profile on first use.
+  Future<bool> signInWithGoogle() async {
+    final current = state.value ?? const AuthState();
+    state = AsyncData(current.copyWith(isLoading: true, clearError: true));
+    try {
+      final cred = await _authService.signInWithGoogle();
+      if (cred == null) {
+        state = AsyncData(current.copyWith(isLoading: false, clearError: true));
+        return false;
+      }
+
+      final firebaseUser = cred.user;
+      if (firebaseUser == null) {
+        throw FirebaseAuthException(
+          code: 'google-sign-in-failed',
+          message: 'Google sign-in failed. Please try again.',
+        );
+      }
+
+      final path = FirestorePaths.user(firebaseUser.uid);
+      final snap = await _fs.getDoc(path);
+      if (!snap.exists) {
+        final model = UserModel(
+          uid: firebaseUser.uid,
+          phoneNumber: firebaseUser.phoneNumber ?? '',
+          displayName: firebaseUser.displayName,
+          email: firebaseUser.email,
+          role: UserRole.patient,
+          isVerified: firebaseUser.emailVerified,
+          createdAt: DateTime.now(),
+        );
+        await _fs.setDoc(path, model.toJson());
+        state = AsyncData(
+          AuthState(
+            role: model.role,
+            step: AuthStep.complete,
+            user: model,
+            phoneNumber: model.phoneNumber,
+          ),
+        );
+      } else {
+        final model = UserModel.fromJson(snap.data()!);
+        state = AsyncData(
+          AuthState(
+            role: model.role,
+            step: AuthStep.complete,
+            user: model,
+            phoneNumber: model.phoneNumber,
+          ),
+        );
+      }
+      return true;
+    } catch (e) {
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: _friendlyError(e)),
+      );
+      return false;
+    }
+  }
+
+  /// Signs out of Firebase and immediately publishes an unauthenticated state
+  /// so GoRouter can redirect without waiting for provider invalidation.
+  Future<bool> signOut() async {
+    final current = state.value ?? const AuthState();
+    try {
+      await _authService.signOut();
+      state = const AsyncData(AuthState());
+      return true;
+    } catch (e) {
+      state = AsyncData(current.copyWith(error: _friendlyError(e)));
       return false;
     }
   }
@@ -256,7 +368,9 @@ class AuthController extends AsyncNotifier<AuthState> {
       await _completeSignIn(cred);
       return true;
     } catch (e) {
-      state = AsyncData(current.copyWith(isLoading: false, error: _friendlyError(e)));
+      state = AsyncData(
+        current.copyWith(isLoading: false, error: _friendlyError(e)),
+      );
       return false;
     }
   }
@@ -268,8 +382,12 @@ class AuthController extends AsyncNotifier<AuthState> {
     final firebaseUser = cred.user;
     final current = state.value ?? const AuthState();
     if (firebaseUser == null) {
-      state = AsyncData(current.copyWith(
-          isLoading: false, error: 'Sign-in failed. Please try again.'));
+      state = AsyncData(
+        current.copyWith(
+          isLoading: false,
+          error: 'Sign-in failed. Please try again.',
+        ),
+      );
       return;
     }
     UserModel? model;
@@ -285,14 +403,18 @@ class AuthController extends AsyncNotifier<AuthState> {
       role: UserRole.patient,
       isVerified: true,
     );
-    state = AsyncData(current.copyWith(
-      isLoading: false,
-      step: AuthStep.complete,
-      user: model,
-      role: model.role,
-      phoneNumber: model.phoneNumber,
-    ));
+    state = AsyncData(
+      current.copyWith(
+        isLoading: false,
+        step: AuthStep.complete,
+        user: model,
+        role: model.role,
+        phoneNumber: model.phoneNumber,
+      ),
+    );
   }
 }
 
-final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
+  AuthController.new,
+);

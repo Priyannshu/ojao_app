@@ -1,19 +1,53 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ojao_app/core/constants/app_constants.dart';
 import 'package:ojao_app/data/models/appointment.dart';
 import 'package:ojao_app/data/models/clinic_stats.dart';
 import 'package:ojao_app/data/models/department.dart';
 import 'package:ojao_app/data/models/facility.dart';
+import 'package:ojao_app/data/models/nearby_hospital.dart';
 import 'package:ojao_app/data/models/patient_token.dart';
 import 'package:ojao_app/data/services/analytics_service.dart';
 import 'package:ojao_app/data/services/appointment_service.dart';
 import 'package:ojao_app/data/services/department_service.dart';
 import 'package:ojao_app/data/services/facility_service.dart';
+import 'package:ojao_app/data/services/hospital_api_service.dart';
 import 'package:ojao_app/data/services/queue_service.dart';
 import 'package:ojao_app/features/auth/application/current_user_provider.dart';
+import 'package:ojao_app/features/patient/application/location_controller.dart';
+
+/// Verified hospitals near the patient, fetched from the backend PostGIS
+/// endpoint (ARCHITECTURE.md section 3). Only used when
+/// [AppConstants.useHospitalApi] is enabled; distance is server-computed.
+///
+/// Waits for a resolved position — without one there's nothing to search by, so
+/// it returns an empty list (the UI shows the enable-location prompt instead).
+final nearbyHospitalsProvider = FutureProvider<List<NearbyHospital>>((ref) async {
+  final position = ref.watch(currentPositionProvider);
+  if (position == null) return const [];
+  return ref.watch(hospitalApiServiceProvider).nearby(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+});
 
 /// All active facilities (hospitals / clinics / diagnostic centers), unsorted.
-/// The near-me list sorts these by distance from the patient's location.
+///
+/// Migration switch (delivery step 3): when [AppConstants.useHospitalApi] is on,
+/// this sources from the backend nearby endpoint so every existing consumer —
+/// loading, error, empty and data states — works unchanged against the REST API
+/// instead of Firestore. Off by default, preserving the Firestore MVP.
 final facilitiesProvider = StreamProvider<List<Facility>>((ref) {
+  if (AppConstants.useHospitalApi) {
+    // Re-expose the FutureProvider's async state as a single-value stream so the
+    // StreamProvider contract (and AsyncValueView) is preserved.
+    final async = ref.watch(nearbyHospitalsProvider);
+    return async.when(
+      data: (hospitals) =>
+          Stream.value(hospitals.map((h) => h.toFacility()).toList()),
+      loading: () => const Stream.empty(),
+      error: Stream<List<Facility>>.error,
+    );
+  }
   return ref.watch(facilityServiceProvider).watchFacilities();
 });
 
