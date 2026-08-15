@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { INDUSTRIES } from "@/content/industries";
 import { HOME_FAQS } from "@/content/faq";
@@ -8,14 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { Accordion } from "@/components/ui/Accordion";
 import { FaqSchema } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Hospital Queue Management Software in India | ojao",
   description:
     "Digital queue management and patient flow software for Indian hospitals, clinics, diagnostic labs, and radiology centres. Replace paper tokens with a live, trackable queue.",
-  alternates: {
-    canonical: "/solutions/hospital-queue-management-software-india",
-  },
-};
+  path: "/solutions/hospital-queue-management-software-india/",
+});
 
 const CAPABILITIES = [
   "One live dashboard across every department, instead of checking each waiting area",

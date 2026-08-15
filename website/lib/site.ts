@@ -36,3 +36,18 @@ export const LINKS = {
  * holds a real URL.
  */
 export const APP_STORE_URL: string | null = null;
+
+/**
+ * Where demo requests go.
+ *
+ * The site is deployed as a static export (matching how ojao.in has always
+ * been served), so there is no server to POST a form to. The demo form builds
+ * a prefilled `mailto:` instead — which has the advantage of actually
+ * delivering, unlike the previous setup: the live site's form posted nowhere at
+ * all, and every submission since launch was silently discarded.
+ *
+ * If this is null the form falls back to LinkedIn rather than pretending to
+ * send. Never let it silently succeed.
+ */
+export const CONTACT_EMAIL: string | null = "{{TODO_CONTACT_EMAIL}}";
+

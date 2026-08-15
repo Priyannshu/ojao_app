@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { LINKS } from "@/lib/site";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { Button } from "@/components/ui/Button";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About ojao — Our Story & Founding Team",
   description:
     "Meet the founding team behind ojao and learn why we're building digital patient flow and queue management software for Indian hospitals and clinics.",
-  alternates: { canonical: "/about" },
-};
+  path: "/about/",
+});
 
 const FOUNDERS = [
   {

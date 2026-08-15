@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { Button } from "@/components/ui/Button";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Platform Features | ojao Patient Flow",
   description:
     "A closer look at ojao's queue simulator, admin dashboard, patient journey tracking, and real-time notification system.",
-  alternates: { canonical: "/features" },
-};
+  path: "/features/",
+});
 
 /**
  * Reconciled against the app's actual capabilities (ARCHITECTURE.md §9):

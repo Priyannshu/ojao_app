@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { LegalShell } from "@/components/ui/LegalShell";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Service | ojao",
   description:
     "The terms governing use of the ojao patient app, hospital dashboard, and website.",
-  alternates: { canonical: "/terms" },
-  // Not indexed until real legal copy replaces the outline.
-  robots: { index: false, follow: true },
-};
+  path: "/terms/",
+  noindex: true,
+});
 
 const SECTIONS = [
   {

@@ -3,8 +3,9 @@
 import { useId, useState } from "react";
 import { DEMO_FORM, FINAL_CTA } from "@/content/copy";
 import { PlayStoreBadge } from "@/components/ui/PlayStoreBadge";
+import { CONTACT_EMAIL, LINKS } from "@/lib/site";
 
-type Status = "idle" | "sending" | "sent" | "error";
+type Status = "idle" | "sent" | "error";
 
 export function FinalCta() {
   return (
@@ -62,7 +63,10 @@ function DemoForm() {
   const typeId = useId();
   const emailId = useId();
 
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const configured =
+    Boolean(CONTACT_EMAIL) && !CONTACT_EMAIL!.startsWith("{{");
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const facility = String(form.get("facility") ?? "").trim();
@@ -79,17 +83,29 @@ function DemoForm() {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    setStatus("sending");
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ facility, facilityType, email }),
-      });
-      setStatus(res.ok ? "sent" : "error");
-    } catch {
+    if (!configured) {
       setStatus("error");
+      return;
     }
+
+    // The site is a static export, so there is no endpoint to POST to. Opening
+    // a prefilled mail client is the honest option: it either sends or the user
+    // can see plainly that it did not. The previous implementation showed a
+    // success panel regardless, which is worse than no form at all.
+    const subject = `ojao demo request — ${facility}`;
+    const body = [
+      `Facility: ${facility}`,
+      `Facility type: ${facilityType}`,
+      `Contact email: ${email}`,
+      "",
+      "Requested a clinical demo via ojao.in.",
+    ].join("\n");
+
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+
+    setStatus("sent");
   };
 
   if (status === "sent") {
@@ -107,12 +123,17 @@ function DemoForm() {
             />
           </svg>
         </div>
-        <h3 className="t-h3 mt-5 text-white">Request received</h3>
+        <h3 className="t-h3 mt-5 text-white">Your email client should open</h3>
         <p className="t-body mt-3 text-slate-light">
-          Thanks — we&apos;ll be in touch to schedule your demo.
-        </p>
-        <p className="mt-6 text-xs text-slate-light">
-          {"{{TODO: wire /api/contact to a real inbox or CRM — it currently only logs}}"}
+          Send the prefilled message and we&apos;ll be in touch to schedule your
+          demo. If nothing opened, email us directly at{" "}
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="text-cyan underline underline-offset-4"
+          >
+            {CONTACT_EMAIL}
+          </a>
+          .
         </p>
       </div>
     );
@@ -167,15 +188,23 @@ function DemoForm() {
 
       <button
         type="submit"
-        disabled={status === "sending"}
-        className="mt-8 w-full rounded-full bg-brand px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4fd8] disabled:opacity-60"
+        className="mt-8 w-full rounded-full bg-brand px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4fd8]"
       >
-        {status === "sending" ? "Sending…" : DEMO_FORM.submit}
+        {DEMO_FORM.submit}
       </button>
 
       {status === "error" && (
         <p role="alert" className="mt-4 text-sm text-[#fca5a5]">
-          Something went wrong. Please try again, or reach us on LinkedIn.
+          No contact address is configured yet — please reach us on{" "}
+          <a
+            href={LINKS.linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4"
+          >
+            LinkedIn
+          </a>{" "}
+          instead.
         </p>
       )}
     </form>

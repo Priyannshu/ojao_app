@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { POSTS } from "@/content/blog";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Blog & Guides | ojao Patient Flow",
   description:
     "Practical guides on hospital queue management, OPD wait times, and patient flow software for Indian clinics and hospitals.",
-  alternates: { canonical: "/blog" },
-};
+  path: "/blog/",
+});
 
 export default function BlogIndexPage() {
   return (

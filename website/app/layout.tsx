@@ -34,7 +34,9 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE.name,
     locale: "en_IN",
-    url: CANONICAL_HOST,
+    // Deliberately no `url` here. Setting it at the root pins og:url to the
+    // homepage on every page, which tells crawlers 19 different pages are all
+    // the same URL. Next derives it per-route from alternates.canonical.
     title: TITLE,
     description: SITE.description,
   },

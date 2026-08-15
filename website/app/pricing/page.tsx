@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { PRICING_FAQS } from "@/content/faq";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
@@ -6,12 +7,12 @@ import { Button } from "@/components/ui/Button";
 import { Accordion } from "@/components/ui/Accordion";
 import { FaqSchema } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Pricing & FAQ | ojao Patient Flow",
   description:
     "ojao is priced on a custom enterprise basis. See frequently asked questions about pricing, pilots, and onboarding.",
-  alternates: { canonical: "/pricing" },
-};
+  path: "/pricing/",
+});
 
 export default function PricingPage() {
   return (

@@ -197,15 +197,18 @@ for token numbers and queue positions via `.t-token`.
 Lighthouse, mobile, simulated throttling, median of 5 runs, compared against the
 live site measured identically:
 
-| | Live `ojao.in` | This rebuild |
+Measured against the **deployed** site at https://ojao.in, versus the previous
+site measured identically before the swap:
+
+| | Previous site | Deployed now |
 |---|---|---|
-| Performance | 66 | **77** |
+| Performance | 66 | **74** |
 | Accessibility | 79 | **100** |
 | Best Practices | 96 | **100** |
 | SEO | 100 | **100** |
-| LCP | 5.0s | **3.1s** |
+| LCP | 5.0s | **3.5s** |
 | CLS | 0 | **0** |
-| TBT | 160ms | 600ms |
+| TBT | 160ms | 540ms |
 
 **TBT is a genuine regression** — the cost of shipping WebGL and interactive
 React where the old site shipped mostly static markup. It came down from an
@@ -220,14 +223,50 @@ Accessibility: **0 axe-core WCAG 2.1 AA violations across 11 routes.**
 
 ## Deploying
 
-Built for Vercel; works on any Node host.
+The site is a **static export** served by nginx from `/var/www/ojao` on the
+existing EC2 box (`98.81.124.180`) — the same model the previous site used. No
+Node process runs for the site, which matters: that box has 1.9GB of RAM and
+already runs `ojao-api` and `ojao-auth` under PM2.
 
-1. Set the project root to `website/`.
-2. `npm run build` — everything except `/api/contact` prerenders as static.
-3. Point `ojao.in` at the deployment. DNS currently sits behind Cloudflare —
-   coordinate the cutover.
-4. **Submit `https://ojao.in/sitemap.xml` in Google Search Console** so the dead
-   `ojao.care` URLs get dropped. See `REDIRECTS.md`.
+```bash
+npm run build                        # -> out/ (runs postbuild automatically)
+tar -czf /tmp/ojao-out.tar.gz -C out .
+scp -i <key> /tmp/ojao-out.tar.gz ubuntu@98.81.124.180:~/
+```
 
-Security headers and redirects live in `next.config.ts`, not host config, so
-they travel with the deployment.
+Then on the server:
+
+```bash
+STAMP=$(date +%Y%m%d-%H%M%S)
+sudo cp -a /var/www/ojao /var/www/ojao.backup-$STAMP   # always back up first
+mkdir -p ~/ojao-site-new && tar -xzf ~/ojao-out.tar.gz -C ~/ojao-site-new
+sudo chown -R www-data:www-data ~/ojao-site-new
+sudo chmod -R 755 ~/ojao-site-new
+sudo mv /var/www/ojao /var/www/ojao.old
+sudo mv ~/ojao-site-new /var/www/ojao
+sudo nginx -t && sudo systemctl reload nginx          # test BEFORE reloading
+```
+
+Rollback is `sudo mv /var/www/ojao.old /var/www/ojao`.
+
+### nginx is the source of truth for headers and redirects
+
+`output: "export"` silently ignores `headers()` and `redirects()` in
+`next.config.ts`. The deployed versions live in **`deploy/nginx-ojao.conf`** and
+must be kept in sync with the config by hand. Install with:
+
+```bash
+sudo cp deploy/nginx-ojao.conf /etc/nginx/sites-available/ojao
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+⚠️ The CSP names `static.cloudflareinsights.com` explicitly. Cloudflare injects
+its Web Analytics beacon at the proxy layer, so it is not in our HTML but is
+still governed by our CSP — without that allowance the beacon is blocked and
+analytics silently stop. This was a real regression caught after the first
+deploy. Any third-party script added later needs the same treatment.
+
+### Post-deploy
+
+**Submit `https://ojao.in/sitemap.xml` in Google Search Console** so the dead
+`ojao.care` URLs get re-crawled and dropped. See `REDIRECTS.md`.

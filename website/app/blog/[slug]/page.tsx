@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPost, POSTS } from "@/content/blog";
+import { pageMetadata } from "@/lib/metadata";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
@@ -18,17 +19,13 @@ export async function generateMetadata({
   const post = getPost(slug);
   if (!post) return {};
 
-  return {
+  return pageMetadata({
     title: post.metaTitle,
     description: post.metaDescription,
-    alternates: { canonical: `/blog/${post.slug}` },
-    openGraph: {
-      type: "article",
-      title: post.metaTitle,
-      description: post.metaDescription,
-      publishedTime: post.isoDate,
-    },
-  };
+    path: `/blog/${post.slug}/`,
+    openGraphType: "article",
+    publishedTime: post.isoDate,
+  });
 }
 
 export default async function BlogPostPage({

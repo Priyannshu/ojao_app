@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getIndustry, INDUSTRIES } from "@/content/industries";
+import { pageMetadata } from "@/lib/metadata";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { Button } from "@/components/ui/Button";
@@ -20,11 +21,11 @@ export async function generateMetadata({
   const industry = getIndustry(slug);
   if (!industry) return {};
 
-  return {
+  return pageMetadata({
     title: industry.metaTitle,
     description: industry.metaDescription,
-    alternates: { canonical: `/industries/${industry.slug}` },
-  };
+    path: `/industries/${industry.slug}/`,
+  });
 }
 
 export default async function IndustryPage({

@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import { SECURITY_FAQS } from "@/content/faq";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { FaqSchema } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Security & Data Privacy | ojao",
   description:
     "How ojao handles hospital and patient queue data — encryption, data minimisation, role-based access, and our approach to India's DPDP Act 2023.",
-  alternates: { canonical: "/security" },
-};
+  path: "/security/",
+});
 
 /**
  * Ported near-verbatim from the live page — it is the best-written content on

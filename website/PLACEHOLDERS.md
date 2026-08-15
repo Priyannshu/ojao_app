@@ -42,23 +42,34 @@ so nobody mistakes them for reviewed documents.
 These are not optional: the site collects personal data through the demo form
 and the Play Store listing requires a privacy policy.
 
-### 3. The demo form goes nowhere
+### 3. 🔴 The demo form needs an email address — IT CURRENTLY CANNOT SEND
 
-`app/api/contact/route.ts` validates input, logs a redacted line, and returns
-200. **No inbox, CRM, or database is connected.** Every demo request submitted
-today is silently discarded.
+**`CONTACT_EMAIL` in `lib/site.ts` is still `{{TODO_CONTACT_EMAIL}}`.** Until it
+holds a real address, submitting the form shows: *"No contact address is
+configured yet — please reach us on LinkedIn instead."*
 
-- `{{TODO}}` — wire to an inbox (Resend/Postmark) or CRM.
-- The success panel currently shows this TODO on screen, deliberately, so it
-  cannot ship unnoticed.
+That is deliberate. It does not pretend to send.
+
+Context worth knowing: **the previous site's form posted nowhere at all.** There
+is no contact/demo/lead endpoint in `ojao-api`, and no third-party form service
+in the old JS bundle — so every "Book Free Live Consultation" submission since
+launch was silently discarded. Nobody has ever received a demo request through
+the website.
+
+Fix: set `CONTACT_EMAIL` to a real address. The form then opens a prefilled
+`mailto:` with facility name, facility type, and the contact's email. Works with
+zero infrastructure and cannot fail silently.
+
+Longer term, a POST endpoint on the existing `ojao-api` (which already runs and
+has Postgres) would be better than mailto.
 
 ### 4. No published contact address
 
-The live site publishes no email, phone, or postal address anywhere — the only
-channel is the demo form. Enterprise healthcare buyers treat an unreachable
-vendor as a risk, and a physical address is expected on Indian commercial sites.
+Beyond the form, no email, phone, or postal address appears anywhere on the site.
+Enterprise healthcare buyers treat an unreachable vendor as a risk, and a
+physical address is expected on Indian commercial sites.
 
-- `{{TODO}}` — add a contact email to the footer at minimum.
+- `{{TODO}}` — add a contact email to the footer. Same value as `CONTACT_EMAIL`.
 
 ---
 
@@ -136,19 +147,24 @@ idea. It is good, not art-directed.
 
 ### 12. Analytics
 
-None installed. No Google Analytics, no Plausible, no Vercel Analytics.
+Cloudflare Web Analytics is active (injected at the proxy layer, not in our
+HTML). Nothing else is installed — no Google Analytics, no Plausible.
 
-- `{{TODO}}` — decide. Note the CSP in `next.config.ts` currently restricts
-  `connect-src` to `'self'`, so any analytics domain must be added there
-  explicitly or it will be silently blocked.
+⚠️ The CSP had to name `static.cloudflareinsights.com` explicitly, because a
+proxy-injected script is still governed by our CSP. The first deploy blocked the
+beacon until this was fixed. **Any analytics or third-party script added later
+needs allowlisting in both `next.config.ts` and `deploy/nginx-ojao.conf`, or it
+will fail silently.**
 
 ---
 
 ## Verification
 
+The deployed site can be checked directly:
+
 ```bash
 # Every removed claim stays removed, every route resolves
-node scripts/check-claims.mjs
+node scripts/check-claims.mjs https://ojao.in
 
 # Zero WCAG AA violations across 11 routes
 node scripts/a11y.mjs
