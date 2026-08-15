@@ -64,6 +64,11 @@ components/
   three/                WebGL — see below
   ui/                   Button, SiteNav, SiteFooter, Accordion, Reveal,
                         PageHeader, LegalShell, Wordmark, PlayStoreBadge
+
+scripts/
+  extract-logo.mjs      Regenerates the logo mask from ojao_logo.png
+  postbuild.mjs         Flat aliases for Next 16 RSC payloads (runs in build)
+  check-claims.mjs a11y.mjs diag.mjs shoot.mjs
   seo/JsonLd.tsx        All structured data
 
 content/                All copy as typed constants — no CMS
@@ -185,6 +190,14 @@ change.
 
 Queue-state colours are semantic — `serving`, `called`, `urgent` — and never
 used decoratively. Red appears only in genuine urgency contexts.
+
+**Logo.** `components/ui/Wordmark.tsx` renders the real brand mark — the four
+concentric-line letterforms from `ojao_logo.png` — as a CSS mask over
+`currentColor`. One asset serves light and dark contexts and inherits text
+colour. Regenerate with `node scripts/extract-logo.mjs` if the source changes.
+
+⚠️ The mark has four concentric strokes per letter and mudds together below
+~26px tall. Nav is 30px, footer 38px. Don't shrink it.
 
 **Type:** one family (Inter) at three weights. Display sizes use tighter
 tracking rather than a second font; `--font-mono` is a system stack, used only

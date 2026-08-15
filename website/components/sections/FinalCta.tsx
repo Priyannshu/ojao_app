@@ -101,11 +101,14 @@ function DemoForm() {
       "Requested a clinical demo via ojao.in.",
     ].join("\n");
 
+    // Show the panel first. If the browser refuses the mailto: (sandboxed
+    // iframe, no mail handler), the user is still left looking at the address
+    // rather than a form that appears to have done nothing.
+    setStatus("sent");
+
     window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
       subject,
     )}&body=${encodeURIComponent(body)}`;
-
-    setStatus("sent");
   };
 
   if (status === "sent") {

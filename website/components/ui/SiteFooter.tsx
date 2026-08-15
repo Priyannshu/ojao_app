@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FOOTER } from "@/content/copy";
-import { LINKS, SITE } from "@/lib/site";
+import { CONTACT_EMAIL, LINKS, SITE } from "@/lib/site";
 import { Wordmark } from "./Wordmark";
 import { PlayStoreBadge } from "./PlayStoreBadge";
 import { PulseScene } from "@/components/three/PulseScene";
@@ -20,7 +20,7 @@ export function SiteFooter() {
       <div className="shell relative z-10 pt-20 pb-10">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <Wordmark onDark />
+            <Wordmark onDark height={38} />
             <p className="mt-1 font-mono text-[0.6875rem] tracking-[0.22em] text-slate-light uppercase">
               Patient Flow
             </p>
@@ -30,6 +30,17 @@ export function SiteFooter() {
             <p className="mt-6 font-display text-sm text-white/90">
               {SITE.tagline}
             </p>
+
+            {CONTACT_EMAIL && (
+              <p className="mt-5 text-sm text-slate-light">
+                <a
+                  href={`mailto:${CONTACT_EMAIL}`}
+                  className="underline-offset-4 transition-colors hover:text-cyan hover:underline"
+                >
+                  {CONTACT_EMAIL}
+                </a>
+              </p>
+            )}
 
             <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
               {SOCIALS.map((s) => (

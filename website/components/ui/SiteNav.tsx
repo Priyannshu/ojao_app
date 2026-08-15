@@ -60,7 +60,7 @@ export function SiteNav() {
           aria-label="ojao home"
           onClick={() => setOpen(false)}
         >
-          <Wordmark onDark={onDark && !open} />
+          <Wordmark onDark={onDark && !open} height={30} />
         </Link>
 
         <nav aria-label="Main" className="hidden lg:block">

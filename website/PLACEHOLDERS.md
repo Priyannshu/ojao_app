@@ -42,13 +42,11 @@ so nobody mistakes them for reviewed documents.
 These are not optional: the site collects personal data through the demo form
 and the Play Store listing requires a privacy policy.
 
-### 3. 🔴 The demo form needs an email address — IT CURRENTLY CANNOT SEND
+### 3. ✅ Demo form — RESOLVED
 
-**`CONTACT_EMAIL` in `lib/site.ts` is still `{{TODO_CONTACT_EMAIL}}`.** Until it
-holds a real address, submitting the form shows: *"No contact address is
-configured yet — please reach us on LinkedIn instead."*
-
-That is deliberate. It does not pretend to send.
+`CONTACT_EMAIL` is set to `priyanshu@ojao.in`. Submitting the form opens a
+prefilled `mailto:` with facility name, facility type, and the contact's email;
+the address is also linked in the footer and in the form's confirmation panel.
 
 Context worth knowing: **the previous site's form posted nowhere at all.** There
 is no contact/demo/lead endpoint in `ojao-api`, and no third-party form service
@@ -63,13 +61,13 @@ zero infrastructure and cannot fail silently.
 Longer term, a POST endpoint on the existing `ojao-api` (which already runs and
 has Postgres) would be better than mailto.
 
-### 4. No published contact address
+### 4. Postal address still missing
 
-Beyond the form, no email, phone, or postal address appears anywhere on the site.
-Enterprise healthcare buyers treat an unreachable vendor as a risk, and a
-physical address is expected on Indian commercial sites.
+`priyanshu@ojao.in` is now in the footer, so the site is reachable. A registered
+postal address is still absent and is expected on Indian commercial sites (and
+required by the legal pages in §2).
 
-- `{{TODO}}` — add a contact email to the footer. Same value as `CONTACT_EMAIL`.
+- `{{TODO}}` — add the registered entity name and address.
 
 ---
 
@@ -105,15 +103,27 @@ There is no App Store listing. No App Store badge is rendered anywhere, and
 
 - `{{TODO}}` — set it when iOS ships; the badge component reads that constant.
 
-### 8. `ojao_logo.png` is not used
+### 8. ✅ Real logo in use — RESOLVED
 
-The repo has a logo at `ojao_logo.png`, but the site renders a typographic
-wordmark (`components/ui/Wordmark.tsx`) with the second "o" drawn as a queue
-ring. Deliberate — the raster logo would look soft at nav sizes and has no dark
-variant.
+The site now uses the actual brand mark from `ojao_logo.png` (the four
+concentric-line letterforms), not a substitute.
 
-- `{{TODO}}` — confirm the wordmark is acceptable, or supply an SVG logo with
-  light and dark variants.
+`scripts/extract-logo.mjs` crops the source to its ink bounds (it was 1254x1254
+with the mark occupying only 1082x317) and moves coverage into the alpha
+channel, producing `public/ojao-logo-mask.png` at 31KB. That asset is rendered
+as a **CSS mask over `currentColor`**, so one file works on both the white nav
+and the navy hero and inherits its context's text colour — no second asset, no
+invert filter, no hardcoded hex.
+
+It also drives `app/icon.png` (favicon) and the OG card.
+
+⚠️ The mark is detail-heavy: four concentric strokes per letter. Below about
+26px tall the lines mud together. Current sizes are 30px in the nav and 38px in
+the footer. **Do not shrink it further.** A simplified single-stroke variant for
+small sizes would be the proper fix if a smaller lockup is ever needed.
+
+- `{{TODO}}` — optional: supply a true SVG so it is resolution-independent, and
+  a simplified mark for small sizes.
 
 ---
 

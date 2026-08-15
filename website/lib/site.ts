@@ -49,5 +49,5 @@ export const APP_STORE_URL: string | null = null;
  * If this is null the form falls back to LinkedIn rather than pretending to
  * send. Never let it silently succeed.
  */
-export const CONTACT_EMAIL: string | null = "{{TODO_CONTACT_EMAIL}}";
+export const CONTACT_EMAIL: string | null = "priyanshu@ojao.in";
 

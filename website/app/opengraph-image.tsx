@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Required by output: "export" — emits the card as a file at build time.
 export const dynamic = "force-static";
@@ -9,7 +11,16 @@ export const contentType = "image/png";
 /**
  * OG card. Rebuilds the hero's visual idea — dark map, cyan search radius —
  * in the flexbox subset ImageResponse supports (no grid, no CSS mask).
+ *
+ * The logo is inlined as a base64 data URI because ImageResponse renders in an
+ * isolated context with no access to the site's origin, so a `/`-relative src
+ * would silently fail. The mask asset is white-on-transparent, which is exactly
+ * what this dark card needs — no recolouring required.
  */
+const LOGO_DATA_URI = `data:image/png;base64,${readFileSync(
+  join(process.cwd(), "public", "ojao-logo-mask.png"),
+).toString("base64")}`;
+
 export default function OpengraphImage() {
   return new ImageResponse(
     (
@@ -61,32 +72,20 @@ export default function OpengraphImage() {
           }}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 9999,
-              border: "4px solid #ffffff",
-              display: "flex",
-            }}
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LOGO_DATA_URI}
+            alt=""
+            width={150}
+            height={44}
+            style={{ display: "block" }}
           />
-          <span
-            style={{
-              color: "#ffffff",
-              fontSize: 34,
-              fontWeight: 600,
-              letterSpacing: -1,
-            }}
-          >
-            ojao
-          </span>
           <span
             style={{
               color: "#64748B",
               fontSize: 18,
               letterSpacing: 4,
-              marginLeft: 8,
             }}
           >
             PATIENT FLOW
