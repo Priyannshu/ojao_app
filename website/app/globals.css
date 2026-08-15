@@ -1,0 +1,241 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ojao design tokens
+   Light base (content, credibility, enterprise procurement)
+   + dark sections reserved for WebGL feature moments.
+   Palette confirmed against lib/core/theme/app_colors.dart
+   and the live ojao.in stylesheet. Navy reconciled to the
+   live site's #123A84.
+   ============================================================ */
+
+@theme {
+  /* Brand blues */
+  --color-navy-deep: #0b1120;
+  --color-charcoal: #0f172a;
+  --color-navy: #123a84;
+  --color-brand: #2563eb;
+  --color-cyan: #0ea5e9;
+
+  /* Neutrals.
+     `slate` is the body-text colour and is deliberately darker than the app's
+     #64748B: that value only reaches 4.34:1 on the --color-mist section
+     background, which fails WCAG AA. #556174 clears 5.7:1 on mist and 6.2:1
+     on white. `slate-light` is for dark surfaces only (7.4:1 on navy-deep). */
+  --color-slate: #556174;
+  --color-slate-light: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-soft: #eef3f8;
+  --color-mist: #f1f5f9;
+  --color-offwhite: #fafafa;
+
+  /* Queue states — semantic, never decorative */
+  --color-serving: #10b981;
+  --color-called: #f59e0b;
+  --color-urgent: #ef4444;
+
+  /* Type */
+  /* One family. Display weight/tracking does the work Inter Tight used to,
+     and the mono stack is a system fallback — see app/layout.tsx. */
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono",
+    "Roboto Mono", Menlo, Consolas, monospace;
+}
+
+:root {
+  --ink: #0f172a;
+  --ink-muted: #556174;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Typography ---------- */
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.t-display {
+  font-size: clamp(2.5rem, 6.5vw, 6.5rem);
+  line-height: 0.98;
+  font-weight: 600;
+}
+
+.t-h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.t-h3 {
+  font-size: clamp(1.375rem, 2vw, 1.875rem);
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.t-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.t-lead {
+  font-size: clamp(1.0625rem, 1.5vw, 1.375rem);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.t-body {
+  font-size: 1rem;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* Mono is reserved for token numbers and queue positions — it is what
+   makes the product read as instrumented rather than decorative. */
+.t-token {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Focus: must survive both light and dark surfaces ---------- */
+
+:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.on-dark :focus-visible {
+  outline-color: #7dd3fc;
+}
+
+/* ---------- Dark section shell ---------- */
+
+.on-dark {
+  background: var(--color-navy-deep);
+  color: #f8fafc;
+  --ink: #f8fafc;
+  --ink-muted: #94a3b8;
+}
+
+/* The seam between a dark section and the light page is a design
+   moment, not an abrupt cut. */
+.seam-to-light {
+  background: linear-gradient(
+    to bottom,
+    #0b1120 0%,
+    rgba(18, 58, 132, 0.32) 55%,
+    var(--color-mist) 100%
+  );
+}
+
+.seam-to-dark {
+  background: linear-gradient(
+    to bottom,
+    var(--color-mist) 0%,
+    rgba(18, 58, 132, 0.32) 45%,
+    #0b1120 100%
+  );
+}
+
+/* Guarantees hero text contrast regardless of what the canvas does. */
+.hero-scrim {
+  background: radial-gradient(
+    ellipse 85% 65% at 50% 42%,
+    rgba(11, 17, 32, 0.9) 0%,
+    rgba(11, 17, 32, 0.66) 45%,
+    rgba(11, 17, 32, 0.18) 100%
+  );
+}
+
+/* ---------- Layout utilities ---------- */
+
+.shell {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .shell {
+    padding-inline: 2rem;
+  }
+}
+
+.section-y {
+  padding-block: 5rem;
+}
+
+@media (min-width: 768px) {
+  .section-y {
+    padding-block: 8rem;
+  }
+}
+
+/* ---------- Reveal ----------
+   CSS scroll-driven animation, no JavaScript. Gated behind @supports so
+   unsupporting browsers (currently Safari, Firefox) render the content plainly
+   visible rather than stuck at opacity 0. */
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes reveal-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      /* Start as the element enters the bottom of the viewport and finish
+         well before centre, so content is settled by the time it is read. */
+      animation-range: entry 5% cover 26%;
+    }
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
